@@ -61,7 +61,7 @@ pub async fn fetch_weather() -> Result<Vec<DayData>, Box<dyn std::error::Error>>
     let file = std::fs::File::open("sensitive/openweatherkey.json")?;
     let json_key:OpenWeatherMapKey = serde_json::from_reader(file)?;
     let key = json_key.key;
-    let url = format!("http://api.openweathermap.org/data/2.5/forecast?lat=-33.8679&lon=151.2073&units=metric&appid={key}");
+    let url = format!("http://api.openweathermap.org/data/2.5/forecast?lat=28.96302&lon=-13.54769&units=metric&appid={key}");
     
     let response = reqwest::get(&url).await?;
     let response = response.error_for_status()?;

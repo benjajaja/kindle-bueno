@@ -1,92 +1,84 @@
 mod linear_rg;
 
-mod spx;
-mod btc;
-mod yield_spread;
-mod linux;
 mod halving;
+mod linux;
 mod linux_version;
+mod spx;
+pub mod tides;
 
-use chrono::{DateTime, Utc};
+use chrono::{Datelike, Local};
 
 use log::{info, warn};
 use std::time::Instant;
+use tides::Tide;
 
 use async_std::future;
 use std::time::Duration as stdDuration;
 
 #[derive(Debug)]
 pub struct Stats {
-    /* Uses a sneaky way to scrap financial data from FRED */
-    pub d_spx500: Option<f64>,
-    pub d_btc: Option<f64>,
-    pub yield_spread: Option<f64>,
+    pub tides: Option<(Tide, Tide)>,
+    pub moon_phase: f64,
+}
 
-    pub linux_share: Option<f64>,
-    pub btc_halving: Option<DateTime<Utc>>, /* Estimated future date of event */
-    pub kernel_version: Option<String>
+impl TryFrom<&str> for Tide {
+    type Error = Box<dyn std::error::Error>;
+
+    fn try_from(line: &str) -> Result<Self, Self::Error> {
+        let parts: Vec<&str> = line.split('\t').collect();
+        if parts.len() < 3 {
+            return Err(format!("not 3 parts").into());
+        }
+
+        let time = parts[0].to_string();
+        let tide_type = parts[2].trim();
+
+        match tide_type {
+            "bajamar" => Ok(Tide::Low(time)),
+            "pleamar" => Ok(Tide::High(time)),
+            _ => Err(format!("not 3 bajamar/pleamar").into()),
+        }
+    }
 }
 
 pub async fn fetch_stats() -> Result<Stats, Box<dyn std::error::Error>> {
-    
     info!("Fetching statistics...");
     let now = Instant::now();
-    
+
     let timeout = stdDuration::from_secs(25);
 
-    //let a = spx::fetch();
-    //let d = linux::fetch();
-    //let e = halving::fetch();
-    //let f = linux_version::fetch();
+    let t = future::timeout(timeout, tides::fetch()).await;
 
-    let a = future::timeout(timeout, spx::fetch());
-    let d = future::timeout(timeout, linux::fetch());
-    let e = future::timeout(timeout, halving::fetch());
-    let f = future::timeout(timeout, linux_version::fetch());
+    let t = match t {
+        Ok(r) => r,
+        Err(e) => Err(format!("Timeout: {e}").into()),
+    };
 
-    let (a, d, e, f) = (
-        a.await, 
-        d.await, 
-        e.await, 
-        f.await
-    );
-
-    let a = match a {Ok(r) => {r}, Err(e) => Err(format!("Timeout: {e}").into())};
-    let d = match d {Ok(r) => {r}, Err(e) => Err(format!("Timeout: {e}").into())};
-    let e = match e {Ok(r) => {r}, Err(e) => Err(format!("Timeout: {e}").into())};
-    let f = match f {Ok(r) => {r}, Err(e) => Err(format!("Timeout: {e}").into())};
-
-    match &a {Ok(_) => {}, Err(e) => warn!("SPX stats failed: {e}")}
-    match &d {Ok(_) => {}, Err(e) => warn!("Linux Share stats failed: {e}")}
-    match &e {Ok(_) => {}, Err(e) => warn!("Halving stats failed: {e}")}
-    match &f {Ok(_) => {}, Err(e) => warn!("Linux Version stats failed: {e}")}
-
-    // staggered fetching to spread out fred.com requests 
-    let b = future::timeout(timeout, btc::fetch());
-    let c = future::timeout(timeout, yield_spread::fetch());
-
-    let (b, c) = (
-        b.await, 
-        c.await, 
-    );
-
-    let b = match b {Ok(r) => {r}, Err(e) => Err(format!("Timeout: {e}").into())};
-    let c = match c {Ok(r) => {r}, Err(e) => Err(format!("Timeout: {e}").into())};
-
-    match &b {Ok(_) => {}, Err(e) => warn!("BTC stats failed: {e}")}
-    match &c {Ok(_) => {}, Err(e) => warn!("Yield Spread Version stats failed: {e}")}
+    match &t {
+        Ok(_) => {}
+        Err(e) => warn!("Tides stats failed: {e}"),
+    }
 
     let elapsed = format!("{:.2?}", now.elapsed());
     info!("Statistics took {elapsed}");
-    
-    Ok(
-        Stats{
-            d_spx500: a.ok(),
-            d_btc: b.ok(),
-            yield_spread: c.ok(),
-            linux_share: d.ok(),
-            btc_halving: e.ok(),
-            kernel_version: f.ok()
-        }
-    )
+
+    let now = Local::now();
+    Ok(Stats {
+        tides: t.ok(),
+        moon_phase: get_moon_phase_fraction(now.year(), now.month(), now.day()),
+    })
+}
+
+fn get_moon_phase_fraction(year: i32, month: u32, day: u32) -> f64 {
+    // This is a simplified version based on Conway's algorithm
+    let mut r = year % 100;
+    r %= 19;
+    if r > 9 {
+        r -= 19;
+    }
+    let mut t = ((r * 11) as i32 + month as i32 + day as i32) % 30;
+    if t < 0 {
+        t += 30;
+    }
+    (t as f64) / 29.53  // approximate synodic month length
 }

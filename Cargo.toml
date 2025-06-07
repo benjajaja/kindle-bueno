@@ -1,5 +1,5 @@
 [package]
-name = "kindle"
+name = "kindle-bueno"
 version = "0.1.0"
 edition = "2021"
 
@@ -11,6 +11,7 @@ serde_json = "^1.0"
 yup-oauth2 = "11.0.0"
 reqwest = { version = "0.12.5", default-features = false, features = ["json", "blocking", "rustls-tls"] }
 chrono = "0.4.38"
+chrono-tz = "0.8"
 regex = "1.10.5"
 image = "0.25.1"
 resvg = "0.42.0"
