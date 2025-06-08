@@ -17,11 +17,13 @@ use std::{env, panic::AssertUnwindSafe, time::Duration};
 
 use log::info;
 
+const SLEEP_MINUTES: u32 = 60;
+
 fn get_duration_until_next_interval() -> u64 {
     let now = chrono::Local::now();
     let minutes = now.minute();
     let seconds = now.second();
-    let next_interval_minutes = 15 - (minutes % 15);
+    let next_interval_minutes = SLEEP_MINUTES - (minutes % SLEEP_MINUTES);
     (next_interval_minutes * 60 - seconds) as u64
 }
 
@@ -87,7 +89,8 @@ async fn main() {
 
     loop {
         let wait = get_duration_until_next_interval();
-        info!("Sleeping for {wait} seconds...");
+        let minutes = wait * 60;
+        info!("Sleeping for {minutes} minutes...");
         tokio::time::sleep(std::time::Duration::from_secs(wait)).await;
         panic_wrapper().await.ok();
     }

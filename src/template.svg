@@ -24,9 +24,9 @@
    inkscape:pagecheckerboard="0"
    inkscape:deskcolor="#505050"
    inkscape:document-units="mm"
-   inkscape:zoom="0.5166947"
-   inkscape:cx="714.1548"
-   inkscape:cy="274.8238"
+   inkscape:zoom="0.73071665"
+   inkscape:cx="540.56521"
+   inkscape:cy="190.22421"
    inkscape:window-width="1703"
    inkscape:window-height="940"
    inkscape:window-x="0"
@@ -1021,7 +1021,7 @@
            style="font-weight:bold;font-family:FreeSans;-inkscape-font-specification:FreeSans;text-anchor:middle;fill:#000000"
            id="tspan3">#I2a</tspan></tspan></text></g><g
      id="g19"
-     transform="matrix(0.97409326,0,0,0.95833333,0.12953368,0.20833333)"
+     transform="matrix(0.97409326,0,0,0.95833333,17.236028,16.630568)"
      style="filter:url(#filter19)"><g
        id="g17"><rect
          style="fill:#4cbd3e;fill-opacity:0;stroke:#000000;stroke-width:0;stroke-linecap:round;stroke-linejoin:round"
@@ -1062,7 +1062,7 @@
      transform="matrix(5.5129177,0,0,5.4237238,10.774404,33.122791)"
      inkscape:label="icon" /><g
      id="g19-5"
-     transform="matrix(0.97409326,0,0,0.95833333,198.12953,0.20833335)"
+     transform="matrix(0.97409326,0,0,0.95833333,213.8675,16.630568)"
      style="filter:url(#filter21)"><g
        id="g17-5"><rect
          style="fill:#4cbd3e;fill-opacity:0;stroke:#000000;stroke-width:0;stroke-linecap:round;stroke-linejoin:round"
@@ -1103,7 +1103,7 @@
      transform="matrix(5.5129177,0,0,5.4237238,208.7744,33.122791)"
      inkscape:label="icon" /><g
      id="g19-5-4"
-     transform="matrix(0.97409326,0,0,0.95833333,396.12953,0.20833333)"
+     transform="matrix(0.97409326,0,0,0.95833333,415.97306,16.630568)"
      style="filter:url(#filter23)"><g
        id="g17-5-9"><rect
          style="fill:#4cbd3e;fill-opacity:0;stroke:#000000;stroke-width:0;stroke-linecap:round;stroke-linejoin:round"
@@ -1206,29 +1206,32 @@
      transform="matrix(2.0100258,0,0,1.2177301,-4.0340543,19.498943)" /><g
      style="fill:currentColor"
      id="g2"
-     transform="matrix(4.5,0,0,4.5,23.0888374,37.34375)">
+     transform="matrix(6.3553957,0,0,6.3553957,14.87772,48.291906)">
     <image
-   href="./icons/1.svg"
+   href="icons/1.svg"
    id="image2" />
     </g><g
      style="fill:currentColor"
      id="g2-8"
-     transform="matrix(4.5,0,0,4.5,221.089,37.34375)">
+     transform="matrix(6.3553957,0,0,6.3553957,212.23075,48.291906)">
     <image
-   href="./icons/2.svg"
+   href="icons/2.svg"
    id="image3" />
      </g><g
      style="fill:currentColor"
      id="g2-8-1"
-     transform="matrix(4.5,0,0,4.5,419.089,37.34375)">
+     transform="matrix(6.3553957,0,0,6.3553957,413.82213,48.291906)">
     <image
-   href="./icons/3.svg"
-   id="image4" />
+   href="icons/3.svg"
+   id="image4"
+   y="0"
+   width="16"
+   height="16" />
     </g><g
      style="fill:currentColor"
      id="g3"
      transform="matrix(9.3989277,0,0,9.3989277,1023.8949,14.119205)"><image
-       href="./moon/1.svg"
+       href="moon/1.svg"
        id="image5" /></g><g
      id="g48"
      transform="translate(689.1322,-656.60583)"><text

@@ -174,6 +174,7 @@ fn color_distance_sq(c1: (u8, u8, u8), c2: (u8, u8, u8)) -> u32 {
 fn remap_colors_to_grayscale_fuzzy(img: &DynamicImage) -> ImageBuffer<Luma<u8>, Vec<u8>> {
     let color_map = [
         ((205, 255, 255), 255), // light teal - brightest
+        ((0, 0, 254), 242),     // new blue, between light teal and teal
         ((129, 243, 255), 230), // teal
         ((0, 255, 0), 190),     // green
         ((255, 255, 75), 160),  // yellow

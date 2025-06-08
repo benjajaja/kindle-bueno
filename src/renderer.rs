@@ -90,8 +90,8 @@ fn format_stats(template: String, data: &KindleDisplayData) -> String {
                 "#I1a",
                 &match &short_stats.tides {
                     Some((first, _)) => match first {
-                        Tide::High(_) => format!("High"),
-                        Tide::Low(_) => format!("Low"),
+                        Tide::High(_) => format!("Pleamar"),
+                        Tide::Low(_) => format!("Bajamar"),
                     },
                     None => "NA".to_string(),
                 },
@@ -111,8 +111,8 @@ fn format_stats(template: String, data: &KindleDisplayData) -> String {
                 "#I2a",
                 &match &short_stats.tides {
                     Some((_, second)) => match second {
-                        Tide::High(_) => format!("High"),
-                        Tide::Low(_) => format!("Low"),
+                        Tide::High(_) => format!("Pleamar"),
+                        Tide::Low(_) => format!("Bajamar"),
                     },
                     None => "NA".to_string(),
                 },
@@ -130,7 +130,7 @@ fn format_stats(template: String, data: &KindleDisplayData) -> String {
 
             template = replace_image(
                 template,
-                "./moon/1.svg",
+                "moon/1.svg",
                 &moon_to_icon(short_stats.moon_phase),
             );
 
@@ -267,7 +267,7 @@ fn format_weather(template: String, data: &KindleDisplayData) -> String {
                     template = template.replace("#D1", &format!("{:0>2} {}", day.date, day.day));
                     template = template.replace("#T1", &format!("{:.1}", day.max_c));
                     template = template.replace("#T2", &format!("{:.1}", day.min_c));
-                    template = replace_image(template, "./icons/1.svg", &&weather_to_icon(day));
+                    template = replace_image(template, "icons/1.svg", &&weather_to_icon(day));
 
                     template
                 }
@@ -284,7 +284,7 @@ fn format_weather(template: String, data: &KindleDisplayData) -> String {
                     template = template.replace("#D2", &format!("{:0>2} {}", day.date, day.day));
                     template = template.replace("#T3", &format!("{:.1}", day.max_c));
                     template = template.replace("#T4", &format!("{:.1}", day.min_c));
-                    template = replace_image(template, "./icons/2.svg", &&weather_to_icon(day));
+                    template = replace_image(template, "icons/2.svg", &&weather_to_icon(day));
                     template
                 }
                 None => {
@@ -300,7 +300,7 @@ fn format_weather(template: String, data: &KindleDisplayData) -> String {
                     template = template.replace("#D3", &format!("{:0>2} {}", day.date, day.day));
                     template = template.replace("#T5", &format!("{:.1}", day.max_c));
                     template = template.replace("#T6", &format!("{:.1}", day.min_c));
-                    template = replace_image(template, "./icons/3.svg", &&weather_to_icon(day));
+                    template = replace_image(template, "icons/3.svg", &&weather_to_icon(day));
                     template
                 }
                 None => {
