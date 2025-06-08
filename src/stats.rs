@@ -80,5 +80,5 @@ fn get_moon_phase_fraction(year: i32, month: u32, day: u32) -> f64 {
     if t < 0 {
         t += 30;
     }
-    (t as f64) / 29.53  // approximate synodic month length
+    1.0 - ((t as f64) / 29.53) // approximate synodic month length
 }

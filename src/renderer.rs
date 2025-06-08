@@ -1,12 +1,8 @@
-use crate::calendar;
-use crate::news;
 use crate::radar;
 use crate::stats;
 use crate::stats::tides::Tide;
 use crate::weather;
 
-use crate::calendar::CalendarEvent;
-use crate::stats::Stats;
 use crate::weather::DayData;
 
 use image::{DynamicImage, ImageBuffer, Rgba};
@@ -20,7 +16,7 @@ use base64::prelude::*;
 use regex::Regex;
 use std::io::Cursor;
 
-use chrono::{DateTime, Duration, Timelike, Utc};
+use chrono::Timelike;
 use std::time::Instant;
 
 use futures::join;
@@ -33,10 +29,7 @@ use std::time::Duration as stdDuration;
 struct KindleDisplayData {
     short_stats: Option<stats::Stats>,
     weather: Option<Vec<weather::DayData>>,
-    news: Option<Vec<String>>,
-    calendar_event: Option<Option<calendar::CalendarEvent>>,
     image: Option<DynamicImage>,
-    tides: Option<DynamicImage>,
 }
 
 async fn build_all_data() -> KindleDisplayData {
@@ -47,13 +40,9 @@ async fn build_all_data() -> KindleDisplayData {
 
     let short_stats = future::timeout(timeout, stats::fetch_stats());
     let weather = future::timeout(timeout, weather::fetch_weather());
-    let news = future::timeout(timeout, news::fetch_news());
-    let calendar_event = future::timeout(timeout, calendar::fetch_event());
     let image = future::timeout(timeout, radar::fetch_radar());
-    let tides = future::timeout(timeout, radar::fetch_tides());
 
-    let (short_stats, weather, news, calendar_event, image, tides) =
-        join!(short_stats, weather, news, calendar_event, image, tides);
+    let (short_stats, weather, image) = join!(short_stats, weather, image);
 
     let elapsed = format!("{:.2?}", now.elapsed());
     info!("Fetched all kindle data in {elapsed}");
@@ -67,19 +56,7 @@ async fn build_all_data() -> KindleDisplayData {
         Ok(r) => r,
         Err(e) => Err(format!("Timeout: {e}").into()),
     };
-    let news = match news {
-        Ok(r) => r,
-        Err(e) => Err(format!("Timeout: {e}").into()),
-    };
-    let calendar_event = match calendar_event {
-        Ok(r) => r,
-        Err(e) => Err(format!("Timeout: {e}").into()),
-    };
     let image = match image {
-        Ok(r) => r,
-        Err(e) => Err(format!("Timeout: {e}").into()),
-    };
-    let tides = match tides {
         Ok(r) => r,
         Err(e) => Err(format!("Timeout: {e}").into()),
     };
@@ -93,222 +70,16 @@ async fn build_all_data() -> KindleDisplayData {
         Ok(_) => {}
         Err(e) => warn!("Weather failed: {e}"),
     }
-    match &news {
-        Ok(_) => {}
-        Err(e) => warn!("News failed: {e}"),
-    }
-    match &calendar_event {
-        Ok(_) => {}
-        Err(e) => warn!("Calendar failed: {e}"),
-    }
     match &image {
         Ok(_) => {}
         Err(e) => warn!("Radar failed: {e}"),
-    }
-    match &tides {
-        Ok(_) => {}
-        Err(e) => warn!("Tides failed: {e}"),
     }
 
     KindleDisplayData {
         short_stats: short_stats.ok(),
         weather: weather.ok(),
-        news: news.ok(),
-        calendar_event: calendar_event.ok(),
         image: image.ok(),
-        tides: tides.ok(),
     }
-}
-
-async fn _build_some_data() -> KindleDisplayData {
-    // Used for testing
-
-    let news = vec![
-        "Russia loses more than 70,000 soldiers in 2 months".to_string(),
-        "UAE deports graduate who yelled 'Free Palestine' as he received his diploma".to_string(),
-        "Move by some NATO members to let Kyiv strike Russia with their arms is a dangerous escalation, Kremlin says".to_string(),
-        "'After PM Modi went back, I am being asked to go to frontline': Punjab man in Russian army".to_string(),
-        "Biden: There’s a lot I wish I’d been able to convince the Israelis to do".to_string(),
-        "Germany says it won't be cowed by Russia after reported plot to kill Rheinmetall CEO".to_string(),
-        "Russian Missile Strike Targets Likely F-16 Airfield in Starokostyantyniv".to_string(),
-        "Ukraine will likely have to wait a year before it's able to launch another counteroffensive, NATO official says".to_string(),
-    ];
-
-    let calendar_event = CalendarEvent {
-        start_time: Utc::now() + Duration::days(1),
-        name: "ASSESSMENT 3 (Part G) - Oral Defense (Points - 25), DUE DATE: Starting from Monday, May 27, 2024".to_string()
-    };
-
-    let short_stats = Stats {
-        tides: None,
-        moon_phase: 0.3,
-    };
-
-    let weather = vec![
-        DayData {
-            data_points: 10,
-            date: 10,
-            day: "FRI".to_string(),
-            rain_sum: 1.0,
-            cloud_sum: 1.0,
-            max_c: 10.0,
-            min_c: 20.0,
-        },
-        DayData {
-            data_points: 10,
-            date: 11,
-            day: "SAT".to_string(),
-            rain_sum: 10.0,
-            cloud_sum: 10.0,
-            max_c: 10.0,
-            min_c: 20.0,
-        },
-        DayData {
-            data_points: 10,
-            date: 12,
-            day: "SUN".to_string(),
-            rain_sum: 100.0,
-            cloud_sum: 10.0,
-            max_c: 10.0,
-            min_c: 20.0,
-        },
-    ];
-
-    // let image = radar::fetch_radar().await.unwrap(); // too slow for testing
-
-    KindleDisplayData {
-        short_stats: Some(short_stats),
-        weather: Some(weather),
-        news: Some(news),
-        calendar_event: Some(Some(calendar_event)),
-        image: None,
-        tides: None,
-    }
-}
-
-fn generate_svg_text(
-    text: Vec<String>,
-    max_lines: usize,
-    max_width: f64,
-    x: i32,
-    y: i32,
-    font_size: i32,
-    line_height: f64,
-) -> String {
-    // SVGs don't have a way to automate line wrapping. Instead, we have to do it ourselves.
-
-    let mut svg_text = String::new();
-    let mut current_lines = 0;
-
-    let line_height = font_size as f64 * line_height;
-    let mut y_new = y.clone() as f64;
-
-    for news in text {
-        let lines = textwrap::wrap(&news, max_width as usize);
-
-        // Check if we exceed max, but not on the first line (we have to show *some* info at least).
-        if (current_lines + lines.len() >= max_lines) && (current_lines != 0) {
-            return svg_text;
-        }
-
-        // Push the current lines
-        for (i, line) in lines.iter().enumerate() {
-            svg_text.push_str(&format!(
-                r#"<tspan x="{}" y="{}" font-family="FreeSans" font-weight="bold" font-size="{}px">"#,
-                x, y_new, font_size
-            ));
-            svg_text.push_str(&line);
-            svg_text.push_str("</tspan>");
-            current_lines = current_lines + 1;
-            y_new += line_height;
-
-            /* If we are "sitting" on the end but there are more lines to go, then just show ... and return */
-            if (current_lines >= max_lines - 1) && (i != line.len() - 1) {
-                svg_text.push_str(&format!(
-                    r#"<tspan x="{}" y="{}" font-family="FreeSans" font-weight="bold" font-size="{}px">"#,
-                    x, y_new, font_size
-                ));
-                svg_text.push_str("* * *");
-                svg_text.push_str("</tspan>");
-                return svg_text;
-            }
-        }
-
-        y_new += line_height;
-        current_lines = current_lines + 1;
-    }
-
-    svg_text
-}
-
-fn time_remaining(target: DateTime<Utc>) -> String {
-    let now = Utc::now();
-    let duration = target - now;
-
-    if duration.num_days() >= 365 {
-        let years = duration.num_days() / 365;
-        format!("{} years", years)
-    } else if duration.num_days() >= 30 {
-        let months = duration.num_days() / 30;
-        format!("{} months", months)
-    } else if duration.num_days() >= 7 {
-        let weeks = duration.num_days() / 7;
-        format!("{} weeks", weeks)
-    } else if duration.num_hours() >= 24 {
-        let days = duration.num_days();
-        format!("{} days", days)
-    } else if duration.num_minutes() >= 60 {
-        let hours = duration.num_hours();
-        format!("{} hours", hours)
-    } else if duration.num_seconds() >= 60 {
-        let minutes = duration.num_minutes();
-        format!("{} mins", minutes)
-    } else {
-        let seconds = duration.num_seconds();
-        format!("{} secs", seconds)
-    }
-}
-
-fn format_news(template: String, data: &KindleDisplayData) -> String {
-    let new_template = match &data.news {
-        Some(news) => template.replace(
-            "#N1",
-            &generate_svg_text(news.clone(), 18, 35.0, 2267, 878, 120, 1.2),
-        ),
-        None => template.replace("#N1", "ERR"),
-    };
-
-    new_template
-}
-
-fn format_calendar(template: String, data: &KindleDisplayData) -> String {
-    let mut template = template.clone();
-    match &data.calendar_event {
-        Some(possible_calendar_event) => match possible_calendar_event {
-            Some(calendar_event) => {
-                let name = calendar_event.name.clone();
-                let time = calendar_event.start_time.clone();
-                let remaining = time_remaining(time);
-
-                template = template.replace("#G2", &format!("in {remaining}"));
-                template = template.replace(
-                    "#G1",
-                    &generate_svg_text(vec![name], 5, 33.0, 3080, 180, 100, 1.2),
-                )
-            }
-            None => {
-                template = template.replace("#G2", "");
-                template = template.replace("#G1", "No upcoming events");
-            }
-        },
-
-        None => {
-            template = template.replace("#G2", "ERR!");
-            template = template.replace("#G1", "Could not fetch any events");
-        }
-    };
-
-    return template;
 }
 
 fn format_stats(template: String, data: &KindleDisplayData) -> String {
@@ -357,18 +128,11 @@ fn format_stats(template: String, data: &KindleDisplayData) -> String {
                 },
             );
 
-            template = template.replace(
-                "<image href=\"./moon/1.svg\" />",
-                // "???",
+            template = replace_image(
+                template,
+                "./moon/1.svg",
                 &moon_to_icon(short_stats.moon_phase),
             );
-            println!("moon_phase: {}", short_stats.moon_phase);
-
-            // template = template.replace(
-            // "<image href=\"icons/1.svg\" />",
-            // &moon_to_icon(short_stats.moon_phase),
-            // );
-            // &format!("{:.02}", short_stats.moon_phase));
 
             // template = template.replace(
             // "#I4",
@@ -503,8 +267,8 @@ fn format_weather(template: String, data: &KindleDisplayData) -> String {
                     template = template.replace("#D1", &format!("{:0>2} {}", day.date, day.day));
                     template = template.replace("#T1", &format!("{:.1}", day.max_c));
                     template = template.replace("#T2", &format!("{:.1}", day.min_c));
-                    template =
-                        template.replace("<image href=\"./icons/1.svg\" />", &weather_to_icon(day));
+                    template = replace_image(template, "./icons/1.svg", &&weather_to_icon(day));
+
                     template
                 }
                 None => {
@@ -520,8 +284,7 @@ fn format_weather(template: String, data: &KindleDisplayData) -> String {
                     template = template.replace("#D2", &format!("{:0>2} {}", day.date, day.day));
                     template = template.replace("#T3", &format!("{:.1}", day.max_c));
                     template = template.replace("#T4", &format!("{:.1}", day.min_c));
-                    template =
-                        template.replace("<image href=\"./icons/2.svg\" />", &weather_to_icon(day));
+                    template = replace_image(template, "./icons/2.svg", &&weather_to_icon(day));
                     template
                 }
                 None => {
@@ -537,8 +300,7 @@ fn format_weather(template: String, data: &KindleDisplayData) -> String {
                     template = template.replace("#D3", &format!("{:0>2} {}", day.date, day.day));
                     template = template.replace("#T5", &format!("{:.1}", day.max_c));
                     template = template.replace("#T6", &format!("{:.1}", day.min_c));
-                    template =
-                        template.replace("<image href=\"./icons/3.svg\" />", &weather_to_icon(day));
+                    template = replace_image(template, "./icons/3.svg", &&weather_to_icon(day));
                     template
                 }
                 None => {
@@ -576,29 +338,6 @@ fn format_radar(template: String, data: &KindleDisplayData) -> String {
                 Ok(_r) => {
                     let encoded_image = BASE64_STANDARD.encode(buffer.get_ref());
                     template = template.replace("BASE64RADAR", &encoded_image);
-                }
-                Err(e) => {
-                    warn!("Could not write to buffer: {e}")
-                }
-            }
-        }
-        None => {}
-    };
-
-    return template;
-}
-
-fn format_tides(template: String, data: &KindleDisplayData) -> String {
-    let mut template = template.clone();
-    match &data.tides {
-        Some(image) => {
-            let mut buffer = Cursor::new(Vec::new());
-
-            let r = image.write_to(&mut buffer, image::ImageFormat::Png);
-            match r {
-                Ok(_r) => {
-                    let encoded_image = BASE64_STANDARD.encode(buffer.get_ref());
-                    template = template.replace("BASE64TIDES", &encoded_image);
                 }
                 Err(e) => {
                     warn!("Could not write to buffer: {e}")
@@ -664,13 +403,10 @@ async fn create_output_svg() -> String {
     //let data = build_some_data().await;
     let data = build_all_data().await;
 
-    template = format_news(template, &data);
-    template = format_calendar(template, &data);
     template = format_stats(template, &data);
     template = format_time(template, &data);
     template = format_weather(template, &data);
     template = format_radar(template, &data);
-    template = format_tides(template, &data);
 
     template
 }
@@ -796,4 +532,42 @@ pub async fn render_png() {
 
     let elapsed = format!("{:.2?}", start.elapsed());
     info!("Finished in {elapsed}");
+}
+
+pub fn replace_image(template: String, href: &str, tag_replacement: &str) -> String {
+    // Escape the href to safely insert it in a regex
+    let href_pattern = regex::escape(href);
+
+    // Regex to match <image ... href="exact match" ... />
+    let pattern = format!(r#"<image\b[^>]*?\bhref\s*=\s*"{}"[^>]*/?>"#, href_pattern);
+    let re = Regex::new(&pattern).unwrap();
+
+    re.replace_all(&template, tag_replacement).to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_replace_image_exact_href() {
+        let input = r#"
+            <svg>
+                <image
+                    href="./moon/1.svg"
+                    id="quirky"
+                />
+            </svg>
+        "#;
+
+        let expected = r#"
+            <svg>
+                <path />
+            </svg>
+        "#;
+
+        let output = replace_image(input.to_string(), "./moon/1.svg", r#"<path />"#);
+
+        assert_eq!(output.trim(), expected.trim());
+    }
 }
