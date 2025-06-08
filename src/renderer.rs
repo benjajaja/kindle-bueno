@@ -182,8 +182,8 @@ fn format_time(template: String, _data: &KindleDisplayData) -> String {
     let hour = now.hour();
     let minute = now.minute();
 
-    template = template.replace("#1", &format!("{:0>2}", hour));
-    template = template.replace("#2", &format!("{:0>2}", minute));
+    template = template.replace("#time", &format!("{:0>2}:{:0>2}", hour, minute));
+    // template = template.replace("#2", &format!("{:0>2}", minute));
     return template;
 }
 
