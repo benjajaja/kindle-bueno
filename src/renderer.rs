@@ -337,7 +337,8 @@ fn format_radar(template: String, data: &KindleDisplayData) -> String {
             match r {
                 Ok(_r) => {
                     let encoded_image = BASE64_STANDARD.encode(buffer.get_ref());
-                    template = template.replace("BASE64RADAR", &encoded_image);
+                    template = template
+                        .replace("map.png", &format!("data:image/png;base64,{encoded_image}"));
                 }
                 Err(e) => {
                     warn!("Could not write to buffer: {e}")
