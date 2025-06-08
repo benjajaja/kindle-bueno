@@ -1,19 +1,19 @@
 // RUSTFLAGS="-C target-feature=+crt-static" cross build --target arm-unknown-linux-musleabi --release
 
-mod calendar;
+// mod calendar;
 mod weather;
-mod news;
-mod stats;
+// mod news;
 mod radar;
 mod renderer;
+mod stats;
 
 mod utils;
 
 use chrono::Timelike;
 use env_logger;
+use futures::FutureExt;
 use log;
 use std::{env, panic::AssertUnwindSafe, time::Duration};
-use futures::FutureExt;
 
 use log::info;
 
@@ -27,25 +27,26 @@ fn get_duration_until_next_interval() -> u64 {
 
 async fn panic_wrapper() -> Result<(), String> {
     /*
-    
-        The only time a panic should happen is if we cannot allocate memory, write to disk, or create a valid svg.
-        This SHOULD require user attention, as most likely the kindle has run out of space.
 
-        In the case that eips can not even be used to show the panic message, only then does
-        the code "promote" the panic and stop the program permanently.
-     */
+       The only time a panic should happen is if we cannot allocate memory, write to disk, or create a valid svg.
+       This SHOULD require user attention, as most likely the kindle has run out of space.
+
+       In the case that eips can not even be used to show the panic message, only then does
+       the code "promote" the panic and stop the program permanently.
+    */
 
     let may_panic = async {
-        utils::check_internet_with_retries(3, Duration::from_secs(5)).await.unwrap();
+        utils::check_internet_with_retries(3, Duration::from_secs(5))
+            .await
+            .unwrap();
         renderer::render_png().await
     };
 
     let panic_result = AssertUnwindSafe(may_panic).catch_unwind().await;
 
     match panic_result {
-        Ok(_r) => {return Ok(())},
+        Ok(_r) => return Ok(()),
         Err(e) => {
-
             let &panic_message;
             if let Some(s) = e.downcast_ref::<String>() {
                 panic_message = s.to_string();
@@ -54,16 +55,16 @@ async fn panic_wrapper() -> Result<(), String> {
             } else {
                 panic_message = "Panic occurred but could not be downcast to a string".to_string();
             }
-            
-            // Minimal render to show panic message incase it an svg based fail  
+
+            // Minimal render to show panic message incase it an svg based fail
             let r = renderer::show_panic(&panic_message).await;
 
             match r {
                 // We showed the panic message successfully, but we still panicked...
                 Ok(_r) => Err(format!("Showed panic message \"{panic_message}\"")),
 
-                // We cant even show the panic message. Now we REALLY panic. 
-                Err(e) => panic!("Could not show panic message: \"{panic_message}\", due to: {e}")
+                // We cant even show the panic message. Now we REALLY panic.
+                Err(e) => panic!("Could not show panic message: \"{panic_message}\", due to: {e}"),
             }
         }
     }
@@ -71,7 +72,9 @@ async fn panic_wrapper() -> Result<(), String> {
 
 #[tokio::main]
 async fn main() {
-    if env::var("RUST_LOG").is_err() {env::set_var("RUST_LOG", "info")}
+    if env::var("RUST_LOG").is_err() {
+        env::set_var("RUST_LOG", "info")
+    }
     env_logger::init();
 
     if env::var("NOT_KINDLE").is_err() {
@@ -89,3 +92,4 @@ async fn main() {
         panic_wrapper().await.ok();
     }
 }
+
