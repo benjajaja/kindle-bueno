@@ -23,9 +23,10 @@ pub async fn fetch() -> Result<(Tide, Tide), Box<dyn std::error::Error>> {
 
     let date = get_date();
 
+    let station_id = include_str!("../../sensitive/tide_station_id").trim();
     let response = client
         .get(format!(
-            "https://ideihm.covam.es/api-ihm/getmarea?request=gettide&id=53&date={date}"
+            "https://ideihm.covam.es/api-ihm/getmarea?request=gettide&id={station_id}&date={date}"
         ))
         .headers(headers)
         .send()

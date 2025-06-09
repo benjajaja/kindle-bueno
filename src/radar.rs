@@ -1,4 +1,5 @@
 use image::{self, ImageBuffer, ImageFormat, Luma};
+use once_cell::sync::Lazy;
 use reqwest;
 use serde::Deserialize;
 
@@ -7,11 +8,12 @@ use image::{DynamicImage, GenericImageView};
 use reqwest::header::USER_AGENT;
 
 use chrono::{Datelike, Local, Timelike};
-use log::info;
+use log::{error, info};
 
 #[derive(Deserialize, Debug)]
-struct AemetKey {
+struct AemetConfig {
     key: String,
+    station: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -128,13 +130,19 @@ pub struct Wind {
     pub direction: f32,
 }
 
-pub async fn fetch_wind() -> Result<Wind, Box<dyn std::error::Error>> {
-    let file = std::fs::File::open("sensitive/aemet.json")?;
-    let json_key: AemetKey = serde_json::from_reader(file)?;
-    let key = json_key.key;
+static AEMET_CONFIG: Lazy<AemetConfig> = Lazy::new(|| {
+    let file = include_bytes!("../sensitive/aemet.json");
+    let config: AemetConfig = serde_json::from_slice(file).unwrap();
+    config
+});
 
+pub async fn fetch_wind() -> Result<Wind, Box<dyn std::error::Error>> {
+    let key = &AEMET_CONFIG.key;
+    let station = &AEMET_CONFIG.station;
+
+    info!("Fetching AEMET observation data station {station}");
     let url = format!(
-        "https://opendata.aemet.es/opendata/api/observacion/convencional/datos/estacion/C029O?api_key={key}"
+        "https://opendata.aemet.es/opendata/api/observacion/convencional/datos/estacion/{station}?api_key={key}"
     );
 
     let client = reqwest::Client::new();
@@ -143,12 +151,16 @@ pub async fn fetch_wind() -> Result<Wind, Box<dyn std::error::Error>> {
     let ares: AemetRes = response.json().await?;
 
     if ares.status != 200 {
+        error!("Bad status AEMET {}", ares.status);
         return Err(format!("aemet status {}", ares.status).into());
     }
 
     let url = ares.data;
 
-    let response = client.get(url).send().await?;
+    info!("Following AEMET observation data URL {url}");
+    let response = client.get(url).send().await.inspect_err(|err| {
+        error!("Aemet request error: {err:?}");
+    })?;
     let data: Vec<AemetStation> = response.json().await?;
 
     let Some(last) = data.last() else {

@@ -361,10 +361,10 @@ fn format_radar(template: String, data: &KindleDisplayData) -> String {
     };
 
     if let Some(wind) = &data.wind {
-        template = template.replace("#wind", &format!("{:.2?} m/s", wind.speed));
+        template = template.replace("#wind", &format!("{:.1?}", wind.speed));
         template = template.replace(
             "rotate(45 1115 84)",
-            &format!("rotate({:.0} 1115 84)", wind.direction + 180.0),
+            &format!("rotate({:.0} 1100 60)", wind.direction + 180.0),
         );
         info!("Wind direction: {} deg", wind.direction);
     } else {
@@ -523,6 +523,7 @@ pub fn save(mut image: DynamicImage) -> String {
             height: 800,
         }
     });
+    info!("screen width,height: {},{}", screen.width, screen.height);
 
     image = image.resize_exact(
         screen.height,

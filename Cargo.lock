@@ -1352,6 +1352,7 @@ dependencies = [
  "ical",
  "image",
  "log",
+ "once_cell",
  "regex",
  "reqwest",
  "resvg",
