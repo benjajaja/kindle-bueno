@@ -89,10 +89,9 @@ async fn main() {
 
     loop {
         let wait = get_duration_until_next_interval();
-        let minutes = wait * 60;
+        let minutes = wait / 60;
         info!("Sleeping for {minutes} minutes...");
         tokio::time::sleep(std::time::Duration::from_secs(wait)).await;
         panic_wrapper().await.ok();
     }
 }
-

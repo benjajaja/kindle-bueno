@@ -10,8 +10,24 @@ use chrono::{Datelike, Local, Timelike};
 use log::{info, warn};
 
 #[derive(Deserialize, Debug)]
-struct Aemet {
+struct AemetKey {
     key: String,
+}
+
+#[derive(Deserialize, Debug)]
+struct AemetRes {
+    #[serde(rename = "estado")]
+    status: u32,
+    #[serde(rename = "datos")]
+    data: String,
+}
+
+#[derive(Deserialize, Debug)]
+struct AemetStation {
+    #[serde(rename = "vv")]
+    wind_speed: f32,
+    #[serde(rename = "dv")]
+    wind_direction: f32,
 }
 
 pub async fn get_image(url: &str) -> Result<image::DynamicImage, String> {
@@ -206,4 +222,42 @@ fn remap_colors_to_grayscale_fuzzy(img: &DynamicImage) -> ImageBuffer<Luma<u8>, 
     }
 
     gray_img
+}
+
+#[derive(Debug)]
+pub struct Wind {
+    pub speed: f32,
+    pub direction: f32,
+}
+
+pub async fn fetch_wind() -> Result<Wind, Box<dyn std::error::Error>> {
+    let file = std::fs::File::open("sensitive/aemet.json")?;
+    let json_key: AemetKey = serde_json::from_reader(file)?;
+    let key = json_key.key;
+
+    let url = format!(
+        "https://opendata.aemet.es/opendata/api/observacion/convencional/datos/estacion/C029O?api_key={key}"
+    );
+
+    let client = reqwest::Client::new();
+
+    let response = client.get(url).send().await?;
+    let ares: AemetRes = response.json().await?;
+
+    if ares.status != 200 {
+        return Err(format!("aemet status {}", ares.status).into());
+    }
+
+    let url = ares.data;
+
+    let response = client.get(url).send().await?;
+    let data: Vec<AemetStation> = response.json().await?;
+
+    let Some(last) = data.last() else {
+        return Err(format!("no aemet data").into());
+    };
+    Ok(Wind {
+        speed: last.wind_speed,
+        direction: last.wind_direction,
+    })
 }

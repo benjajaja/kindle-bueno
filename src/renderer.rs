@@ -1,4 +1,5 @@
 use crate::radar;
+use crate::radar::Wind;
 use crate::stats;
 use crate::stats::tides::Tide;
 use crate::weather;
@@ -30,6 +31,7 @@ struct KindleDisplayData {
     short_stats: Option<stats::Stats>,
     weather: Option<Vec<weather::DayData>>,
     image: Option<DynamicImage>,
+    wind: Option<Wind>,
 }
 
 async fn build_all_data() -> KindleDisplayData {
@@ -41,8 +43,9 @@ async fn build_all_data() -> KindleDisplayData {
     let short_stats = future::timeout(timeout, stats::fetch_stats());
     let weather = future::timeout(timeout, weather::fetch_weather());
     let image = future::timeout(timeout, radar::fetch_radar());
+    let wind = future::timeout(timeout, radar::fetch_wind());
 
-    let (short_stats, weather, image) = join!(short_stats, weather, image);
+    let (short_stats, weather, image, wind) = join!(short_stats, weather, image, wind);
 
     let elapsed = format!("{:.2?}", now.elapsed());
     info!("Fetched all kindle data in {elapsed}");
@@ -60,6 +63,10 @@ async fn build_all_data() -> KindleDisplayData {
         Ok(r) => r,
         Err(e) => Err(format!("Timeout: {e}").into()),
     };
+    let wind = match wind {
+        Ok(r) => r,
+        Err(e) => Err(format!("Timeout: {e}").into()),
+    };
 
     // Warning on error
     match &short_stats {
@@ -74,11 +81,16 @@ async fn build_all_data() -> KindleDisplayData {
         Ok(_) => {}
         Err(e) => warn!("Radar failed: {e}"),
     }
+    match &wind {
+        Ok(_) => {}
+        Err(e) => warn!("Aemet failed: {e}"),
+    }
 
     KindleDisplayData {
         short_stats: short_stats.ok(),
         weather: weather.ok(),
         image: image.ok(),
+        wind: wind.ok(),
     }
 }
 
@@ -347,6 +359,17 @@ fn format_radar(template: String, data: &KindleDisplayData) -> String {
         }
         None => {}
     };
+
+    if let Some(wind) = &data.wind {
+        template = template.replace("#wind", &format!("{:.2?} m/s", wind.speed));
+        template = template.replace(
+            "rotate(45 1115 84)",
+            &format!("rotate({:.0} 1115 84)", wind.direction),
+        );
+        info!("Wind direction: {} deg", wind.direction);
+    } else {
+        template = template.replace("#wind", "N/A");
+    }
 
     return template;
 }
