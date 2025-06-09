@@ -40,12 +40,12 @@ async fn build_all_data() -> KindleDisplayData {
 
     let timeout = stdDuration::from_secs(30);
 
-    let short_stats = future::timeout(timeout, stats::fetch_stats());
-    let weather = future::timeout(timeout, weather::fetch_weather());
-    let image = future::timeout(timeout, radar::fetch_radar());
-    let wind = future::timeout(timeout, radar::fetch_wind());
-
-    let (short_stats, weather, image, wind) = join!(short_stats, weather, image, wind);
+    let (short_stats, weather, image, wind) = join!(
+        future::timeout(timeout, stats::fetch_stats()),
+        future::timeout(timeout, weather::fetch_weather()),
+        future::timeout(timeout, radar::fetch_radar()),
+        future::timeout(timeout, radar::fetch_wind()),
+    );
 
     let elapsed = format!("{:.2?}", now.elapsed());
     info!("Fetched all kindle data in {elapsed}");
@@ -360,16 +360,20 @@ fn format_radar(template: String, data: &KindleDisplayData) -> String {
         None => {}
     };
 
-    if let Some(wind) = &data.wind {
-        template = template.replace("#wind", &format!("{:.2?} m/s", wind.speed));
-        template = template.replace(
-            "rotate(45 1115 84)",
-            &format!("rotate({:.0} 1115 84)", wind.direction),
-        );
-        info!("Wind direction: {} deg", wind.direction);
-    } else {
-        template = template.replace("#wind", "N/A");
-    }
+    // if let Some(wind) = &data.wind {
+    // template = template.replace("#wind", &format!("{:.2?} m/s", wind.speed));
+    // template = template.replace(
+    // "rotate(45 1115 84)",
+    // &format!("rotate({:.0} 1115 84)", wind.direction + 180.0),
+    // );
+    // info!("Wind direction: {} deg", wind.direction);
+    // } else {
+    // template = template.replace("#wind", "N/A");
+    // }
+    template = template.replace(
+        "rotate(45 1115 84)",
+        &format!("rotate({:.0} 1100 70)", 200.0),
+    );
 
     return template;
 }
