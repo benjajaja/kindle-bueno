@@ -12,7 +12,7 @@ use std::time::Duration as stdDuration;
 #[derive(Debug)]
 pub struct Stats {
     pub tides: Option<(Tide, Tide)>,
-    pub moon_phase: f64,
+    pub moon_age: f64,
 }
 
 impl TryFrom<&str> for Tide {
@@ -57,22 +57,20 @@ pub async fn fetch_stats() -> Result<Stats, Box<dyn std::error::Error>> {
     info!("Statistics took {elapsed}");
 
     let now = Local::now();
+    let moon_age = get_moon_age(now.year(), now.month(), now.day());
+    info!("moon age: {moon_age}");
     Ok(Stats {
         tides: t.ok(),
-        moon_phase: get_moon_phase_fraction(now.year(), now.month(), now.day()),
+        moon_age,
     })
 }
 
-fn get_moon_phase_fraction(year: i32, month: u32, day: u32) -> f64 {
-    // This is a simplified version based on Conway's algorithm
-    let mut r = year % 100;
-    r %= 19;
-    if r > 9 {
-        r -= 19;
-    }
-    let mut t = ((r * 11) as i32 + month as i32 + day as i32) % 30;
-    if t < 0 {
-        t += 30;
-    }
-    1.0 - ((t as f64) / 29.53) // approximate synodic month length
+fn get_moon_age(year: i32, month: u32, day: u32) -> f64 {
+    let astro_date = pracstro::time::Date::from_calendar(
+        year as i64,
+        month as u8,
+        day as u8,
+        pracstro::time::Angle::from_clock(12, 0, 0.0),
+    );
+    pracstro::moon::MOON.phaseage(astro_date)
 }

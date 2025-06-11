@@ -7,6 +7,7 @@ use crate::weather;
 use crate::weather::DayData;
 
 use image::{DynamicImage, ImageBuffer, Rgba};
+use once_cell::sync::Lazy;
 use resvg;
 use tiny_skia::{PixmapMut, Transform, BYTES_PER_PIXEL};
 use usvg::Tree;
@@ -140,11 +141,7 @@ fn format_stats(template: String, data: &KindleDisplayData) -> String {
                 },
             );
 
-            template = replace_image(
-                template,
-                "moon/1.svg",
-                &moon_to_icon(short_stats.moon_phase),
-            );
+            template = replace_image(template, "moon/1.svg", &moon_to_icon(short_stats.moon_age));
 
             // template = template.replace(
             // "#I4",
@@ -199,72 +196,74 @@ fn format_time(template: String, _data: &KindleDisplayData) -> String {
     return template;
 }
 
-fn weather_to_icon(day: &DayData) -> String {
-    let icon1 = include_str!("icons/1.svg").to_string();
-    let icon2 = include_str!("icons/2.svg").to_string();
-    let icon3 = include_str!("icons/3.svg").to_string();
-    let icon4 = include_str!("icons/4.svg").to_string();
-    let icon5 = include_str!("icons/5.svg").to_string();
-    let icon6 = include_str!("icons/6.svg").to_string();
-    let icon7 = include_str!("icons/7.svg").to_string();
-    let icon8 = include_str!("icons/8.svg").to_string();
+static WEATHER_SVGS: Lazy<[&'static str; 8]> = Lazy::new(|| {
+    [
+        include_str!("icons/1.svg"),
+        include_str!("icons/2.svg"),
+        include_str!("icons/3.svg"),
+        include_str!("icons/4.svg"),
+        include_str!("icons/5.svg"),
+        include_str!("icons/6.svg"),
+        include_str!("icons/7.svg"),
+        include_str!("icons/8.svg"),
+    ]
+});
 
+fn weather_to_icon(day: &DayData) -> &'static str {
     let avg_rain = day.rain_sum / day.data_points as f64;
     let avg_cloud = day.cloud_sum / day.data_points as f64;
 
-    let mut result = icon1;
+    let mut result = WEATHER_SVGS[0];
 
     if avg_cloud > 20.0 {
-        result = icon2
+        result = WEATHER_SVGS[1];
     }
     if avg_cloud > 50.0 {
-        result = icon3
+        result = WEATHER_SVGS[2];
     }
     if avg_cloud > 80.0 {
-        result = icon4
+        result = WEATHER_SVGS[3];
     }
 
     if avg_rain > 0.1 {
-        result = icon5
+        result = WEATHER_SVGS[4];
     }
     if avg_rain > 0.5 {
-        result = icon6
+        result = WEATHER_SVGS[5];
     }
     if avg_rain > 1.0 {
-        result = icon7
+        result = WEATHER_SVGS[6];
     }
     if avg_rain > 5.0 {
-        result = icon8
+        result = WEATHER_SVGS[7];
     }
 
     result
 }
 
-// (0 = new moon, 0.5 = full moon)
-fn moon_to_icon(phase: f64) -> String {
-    let mut phases = [
-        (0.0, include_str!("moon/1.svg").to_string()),
-        (0.125, include_str!("moon/2.svg").to_string()),
-        (0.25, include_str!("moon/3.svg").to_string()),
-        (0.375, include_str!("moon/4.svg").to_string()),
-        (0.5, include_str!("moon/5.svg").to_string()),
-        (0.625, include_str!("moon/6.svg").to_string()),
-        (0.75, include_str!("moon/7.svg").to_string()),
-        (0.875, include_str!("moon/8.svg").to_string()),
-    ];
-    phases.reverse();
-    // .reverse();
+static MOON_SVGS: Lazy<[&'static str; 8]> = Lazy::new(|| {
+    [
+        include_str!("moon/1.svg"),
+        include_str!("moon/2.svg"),
+        include_str!("moon/3.svg"),
+        include_str!("moon/4.svg"),
+        include_str!("moon/5.svg"),
+        include_str!("moon/6.svg"),
+        include_str!("moon/7.svg"),
+        include_str!("moon/8.svg"),
+    ]
+});
 
-    let mut closest = phases[0].1.clone();
-    let mut smallest_diff = 1.0;
-    for &(p, ref url) in phases.iter() {
-        let diff = (phase - p).abs();
-        if diff < smallest_diff {
-            smallest_diff = diff;
-            closest = url.clone();
-        }
-    }
-    closest
+// (0 = new moon, 0.5 = full moon)
+fn moon_to_icon(age: f64) -> &'static str {
+    const SYNODIC_MONTH: f64 = 29.53058868;
+    const PHASE_WIDTH: f64 = SYNODIC_MONTH / 8.0;
+
+    let shifted_age = (age + PHASE_WIDTH / 2.0).rem_euclid(SYNODIC_MONTH);
+    let phase = (shifted_age / PHASE_WIDTH).floor() as u8;
+
+    info!("rendering moon at step {phase}");
+    MOON_SVGS[phase as usize]
 }
 
 fn format_weather(template: String, data: &KindleDisplayData) -> String {
