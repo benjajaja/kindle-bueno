@@ -367,7 +367,7 @@ fn format_radar(template: String, data: &KindleDisplayData) -> String {
         );
         info!("Wind direction: {} deg", wind.direction);
     } else {
-        template = template.replace("#wind", "N/A");
+        template = template.replace("#wind", "?");
     }
 
     return template;
@@ -447,7 +447,7 @@ async fn render_svg(template: String) -> DynamicImage {
     let size = svg_tree.size();
     let (width, height) = (size.width() as usize, size.height() as usize);
 
-    let mut image: Vec<u8> = vec![0; width * height * BYTES_PER_PIXEL];
+    let mut image: Vec<u8> = vec![255; width * height * BYTES_PER_PIXEL];
 
     info!("Rendering the svg...");
     let now = Instant::now();
@@ -459,9 +459,8 @@ async fn render_svg(template: String) -> DynamicImage {
     let elapsed = format!("{:.2?}", now.elapsed());
     info!("Rendering took {elapsed}");
 
-    let image_vec = image.to_vec();
     let img_buffer: ImageBuffer<Rgba<u8>, Vec<u8>> =
-        ImageBuffer::from_raw(width as u32, height as u32, image_vec).unwrap();
+        ImageBuffer::from_raw(width as u32, height as u32, image).unwrap();
     let result = DynamicImage::ImageRgba8(img_buffer);
     return result;
 }
