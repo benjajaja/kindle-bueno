@@ -1,0 +1,30 @@
+{
+	"items": [
+	{
+		"name": "Kindle Bueno",
+		"priority": -1,
+		"items": [
+		{
+			"name": "Start",
+			"action": "./bin/kbueno.sh",
+			"params": "start",
+			"exitmenu": false,
+			"checked": false,
+			"refresh": false,
+			"status": false,
+			"internal": "status Print the current version of the hack"
+		},
+		{
+			"name": "Stop (kill)",
+			"action": "./bin/kbueno.sh",
+			"params": "stop",
+			"exitmenu": false,
+			"checked": false,
+			"refresh": false,
+			"status": false,
+			"internal": "status Toggle between USBNet & USBMS"
+		}
+		]
+	}
+	]
+}
