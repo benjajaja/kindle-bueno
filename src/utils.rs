@@ -1,8 +1,7 @@
-
-use std::{process::Command, time::Duration};
 use log::info;
-use std::path::Path;
 use reqwest::get;
+use std::path::Path;
+use std::{process::Command, time::Duration};
 use tokio::time::sleep;
 
 pub fn check_xrandr() -> Result<(), String> {
@@ -12,10 +11,8 @@ pub fn check_xrandr() -> Result<(), String> {
         Ok(_r) => {
             info!("Found xrandr!");
             Ok(())
-        },
-        Err(e) => {
-            Err(format!("Could not find xrandr: {e}"))
         }
+        Err(e) => Err(format!("Could not find xrandr: {e}")),
     }
 }
 
@@ -27,10 +24,8 @@ pub fn check_eips() -> Result<(), String> {
         Ok(_r) => {
             info!("Found eips!");
             Ok(())
-        },
-        Err(e) => {
-            Err(format!("Could not find eips: {e}"))
         }
+        Err(e) => Err(format!("Could not find eips: {e}")),
     }
 }
 
@@ -42,14 +37,14 @@ pub async fn check_internet() -> bool {
     }
 }
 
-pub async fn check_internet_with_retries(max_retries: u32, delay: Duration) -> Result<(), ()> {
+pub async fn check_internet_with_retries(max_retries: u32, delay: Duration) -> Result<(), String> {
     for _ in 0..max_retries {
         if check_internet().await {
             return Ok(());
         }
         let _ = sleep(delay).await;
     }
-    Err(())
+    Err(format!("No internet after {max_retries} retries"))
 }
 
 pub fn check_sensitives() -> Result<(), String> {
@@ -71,3 +66,4 @@ pub fn check_sensitives() -> Result<(), String> {
         Err("No sensitive/creds.json".to_string())
     }
 }
+

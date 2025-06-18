@@ -543,7 +543,7 @@ pub async fn render_png() {
 
     let template = create_output_svg().await;
     let image = render_svg(template).await;
-    let output_pth = save(image.clone());
+    let output_pth = save(image);
     let eips_result = update_screen(output_pth).await;
 
     match eips_result {
