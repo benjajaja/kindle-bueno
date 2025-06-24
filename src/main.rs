@@ -38,7 +38,7 @@ async fn panic_wrapper() -> Result<(), String> {
     */
 
     let may_panic = async {
-        utils::check_internet_with_retries(3, Duration::from_secs(5))
+        utils::check_internet_with_retries(10, Duration::from_secs(5))
             .await
             .unwrap();
         renderer::render_png().await
@@ -82,16 +82,13 @@ async fn main() {
     if env::var("NOT_KINDLE").is_err() {
         utils::check_xrandr().unwrap();
         utils::check_eips().unwrap();
-        utils::check_sensitives().unwrap();
     }
 
-    panic_wrapper().await.ok();
-
     loop {
+        panic_wrapper().await.ok();
         let wait = get_duration_until_next_interval();
         let minutes = wait / 60;
         info!("Sleeping for {minutes} minutes...");
         tokio::time::sleep(std::time::Duration::from_secs(wait)).await;
-        panic_wrapper().await.ok();
     }
 }

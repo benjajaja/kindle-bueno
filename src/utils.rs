@@ -1,6 +1,5 @@
-use log::info;
+use log::{info, warn};
 use reqwest::get;
-use std::path::Path;
 use std::{process::Command, time::Duration};
 use tokio::time::sleep;
 
@@ -29,41 +28,34 @@ pub fn check_eips() -> Result<(), String> {
     }
 }
 
-pub async fn check_internet() -> bool {
+pub async fn check_internet(client: &reqwest::Client) -> bool {
     info!("Checking for internet...");
-    match get("http://www.google.com").await {
-        Ok(_) => true,
-        Err(_) => false,
+    match client
+        .get("https://www.google.com/generate_204")
+        .send()
+        .await
+    {
+        Ok(response) if response.status() == 204 => true,
+        _ => false,
     }
 }
 
 pub async fn check_internet_with_retries(max_retries: u32, delay: Duration) -> Result<(), String> {
+    let client = match reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+    {
+        Ok(client) => client,
+        Err(_) => {
+            return Err(format!("Could not build reqwest client"));
+        }
+    };
     for _ in 0..max_retries {
-        if check_internet().await {
+        if check_internet(&client).await {
             return Ok(());
         }
+        warn!("No internet, retry in {delay:?}...");
         let _ = sleep(delay).await;
     }
     Err(format!("No internet after {max_retries} retries"))
 }
-
-pub fn check_sensitives() -> Result<(), String> {
-    let calendar = Path::new("sensitive/creds.json").exists();
-    let weather = Path::new("sensitive/openweatherkey.json").exists();
-    let bom = Path::new("sensitive/bom.json").exists();
-
-    if calendar {
-        if weather {
-            if bom {
-                Ok(())
-            } else {
-                Err("No sensitive/bom.json".to_string())
-            }
-        } else {
-            Err("No sensitive/openweatherkey.json".to_string())
-        }
-    } else {
-        Err("No sensitive/creds.json".to_string())
-    }
-}
-

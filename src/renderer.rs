@@ -48,9 +48,6 @@ async fn build_all_data() -> KindleDisplayData {
         future::timeout(timeout, radar::fetch_wind()),
     );
 
-    let elapsed = format!("{:.2?}", now.elapsed());
-    info!("Fetched all kindle data in {elapsed}");
-
     // Checking timeout messages
     let short_stats = match short_stats {
         Ok(r) => r,
@@ -86,6 +83,9 @@ async fn build_all_data() -> KindleDisplayData {
         Ok(_) => {}
         Err(e) => warn!("Aemet failed: {e}"),
     }
+
+    let elapsed = format!("{:.2?}", now.elapsed());
+    info!("Fetched all kindle data in {elapsed}");
 
     KindleDisplayData {
         short_stats: short_stats.ok(),
