@@ -1,5 +1,4 @@
 use log::{info, warn};
-use reqwest::get;
 use std::{process::Command, time::Duration};
 use tokio::time::sleep;
 

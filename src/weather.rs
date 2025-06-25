@@ -6,6 +6,8 @@ use serde::Deserialize;
 use log::info;
 use std::time::Instant;
 
+use crate::config_file;
+
 #[derive(Deserialize, Debug)]
 struct OpenWeatherMapKey {
     key: String,
@@ -53,7 +55,7 @@ pub struct DayData {
 }
 
 static WEATHER_CONFIG: Lazy<OpenWeatherMapKey> = Lazy::new(|| {
-    let file = include_bytes!("../sensitive/openweatherkey.json");
+    let file = include_bytes!(config_file!("../", "/openweatherkey.json"));
     let config: OpenWeatherMapKey = serde_json::from_slice(file).unwrap();
     config
 });

@@ -10,6 +10,8 @@ use reqwest::header::USER_AGENT;
 use chrono::{Datelike, Local, Timelike};
 use log::{error, info};
 
+use crate::config_file;
+
 #[derive(Deserialize, Debug)]
 struct AemetConfig {
     key: String,
@@ -131,7 +133,7 @@ pub struct Wind {
 }
 
 static AEMET_CONFIG: Lazy<AemetConfig> = Lazy::new(|| {
-    let file = include_bytes!("../sensitive/aemet.json");
+    let file = include_bytes!(config_file!("../", "/aemet.json"));
     let config: AemetConfig = serde_json::from_slice(file).unwrap();
     config
 });

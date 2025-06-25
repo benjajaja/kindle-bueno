@@ -17,6 +17,13 @@ use std::{env, panic::AssertUnwindSafe, time::Duration};
 
 use log::info;
 
+#[macro_export]
+macro_rules! config_file {
+    ($prefix:expr, $file:expr) => {
+        concat!($prefix, env!("CONFIG_DIR"), $file)
+    };
+}
+
 const SLEEP_MINUTES: u32 = 60;
 
 fn get_duration_until_next_interval() -> u64 {
