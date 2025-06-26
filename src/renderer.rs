@@ -1,7 +1,7 @@
 use crate::radar;
 use crate::radar::Wind;
-use crate::stats;
-use crate::stats::tides::Tide;
+use crate::tides;
+use crate::tides::tides::Tide;
 use crate::weather;
 
 use crate::weather::DayData;
@@ -12,7 +12,7 @@ use resvg;
 use tiny_skia::{PixmapMut, Transform, BYTES_PER_PIXEL};
 use usvg::Tree;
 
-use std::{env, process::Command};
+use std::{env, future::Future, process::Command};
 
 use base64::prelude::*;
 use regex::Regex;
@@ -29,7 +29,7 @@ use std::time::Duration as stdDuration;
 
 #[derive(Debug)]
 struct KindleDisplayData {
-    short_stats: Option<stats::Stats>,
+    short_stats: Option<tides::Stats>,
     weather: Option<Vec<weather::DayData>>,
     image: Option<DynamicImage>,
     wind: Option<Wind>,
@@ -40,49 +40,14 @@ async fn build_all_data() -> KindleDisplayData {
     let now = Instant::now();
 
     let timeout = stdDuration::from_secs(30);
+    let retries = 15;
 
     let (short_stats, weather, image, wind) = join!(
-        future::timeout(timeout, stats::fetch_stats()),
-        future::timeout(timeout, weather::fetch_weather()),
-        future::timeout(timeout, radar::fetch_radar()),
-        future::timeout(timeout, radar::fetch_wind()),
+        retry_with_timeout("Short stats", retries, timeout, || tides::fetch_tides()),
+        retry_with_timeout("Weather", retries, timeout, || weather::fetch_weather()),
+        retry_with_timeout("Radar", retries, timeout, || radar::fetch_radar()),
+        retry_with_timeout("Wind", retries, timeout, || radar::fetch_wind()),
     );
-
-    // Checking timeout messages
-    let short_stats = match short_stats {
-        Ok(r) => r,
-        Err(e) => Err(format!("Timeout: {e}").into()),
-    };
-    let weather = match weather {
-        Ok(r) => r,
-        Err(e) => Err(format!("Timeout: {e}").into()),
-    };
-    let image = match image {
-        Ok(r) => r,
-        Err(e) => Err(format!("Timeout: {e}").into()),
-    };
-    let wind = match wind {
-        Ok(r) => r,
-        Err(e) => Err(format!("Timeout: {e}").into()),
-    };
-
-    // Warning on error
-    match &short_stats {
-        Ok(_) => {}
-        Err(e) => warn!("Short stats failed: {e}"),
-    }
-    match &weather {
-        Ok(_) => {}
-        Err(e) => warn!("Weather failed: {e}"),
-    }
-    match &image {
-        Ok(_) => {}
-        Err(e) => warn!("Radar failed: {e}"),
-    }
-    match &wind {
-        Ok(_) => {}
-        Err(e) => warn!("Aemet failed: {e}"),
-    }
 
     let elapsed = format!("{:.2?}", now.elapsed());
     info!("Fetched all kindle data in {elapsed}");
@@ -93,6 +58,50 @@ async fn build_all_data() -> KindleDisplayData {
         image: image.ok(),
         wind: wind.ok(),
     }
+}
+
+async fn retry_with_timeout<T, F, Fut>(
+    name: &str,
+    max_retries: usize,
+    timeout: stdDuration,
+    mut operation: F,
+) -> Result<T, Box<dyn std::error::Error>>
+where
+    F: FnMut() -> Fut,
+    Fut: Future<Output = Result<T, Box<dyn std::error::Error>>>,
+{
+    let mut last_error = None;
+
+    for attempt in 1..=max_retries {
+        match future::timeout(timeout, operation()).await {
+            Ok(Ok(result)) => {
+                if attempt > 1 {
+                    info!("{} succeeded on attempt {}", name, attempt);
+                }
+                return Ok(result);
+            }
+            Ok(Err(e)) => {
+                warn!("{} failed on attempt {}: {}", name, attempt, e);
+                last_error = Some(format!("Operation error: {}", e));
+            }
+            Err(e) => {
+                warn!("{} timed out on attempt {}: {}", name, attempt, e);
+                last_error = Some(format!("Timeout: {}", e));
+            }
+        }
+
+        if attempt < max_retries {
+            const BASE_DELAY: u64 = 500;
+            const MAX_DELAY: u64 = 60_000;
+            let exponential_delay = BASE_DELAY * (2_u64.pow(attempt as u32 - 1)).min(MAX_DELAY);
+            let delay = tokio::time::Duration::from_millis(exponential_delay); // Exponential backoff
+            tokio::time::sleep(delay).await;
+        }
+    }
+
+    let final_error = last_error.unwrap_or_else(|| "Unknown error".to_string());
+    warn!("{} failed after {} attempts", name, max_retries);
+    Err(final_error.into())
 }
 
 fn format_stats(template: String, data: &KindleDisplayData) -> String {

@@ -35,8 +35,8 @@ impl TryFrom<&str> for Tide {
     }
 }
 
-pub async fn fetch_stats() -> Result<Stats, Box<dyn std::error::Error>> {
-    info!("Fetching statistics...");
+pub async fn fetch_tides() -> Result<Stats, Box<dyn std::error::Error>> {
+    info!("Fetching tides...");
     let now = Instant::now();
 
     let timeout = stdDuration::from_secs(25);
@@ -54,7 +54,7 @@ pub async fn fetch_stats() -> Result<Stats, Box<dyn std::error::Error>> {
     }
 
     let elapsed = format!("{:.2?}", now.elapsed());
-    info!("Statistics took {elapsed}");
+    info!("Tides took {elapsed}");
 
     let now = Local::now();
     let moon_age = get_moon_age(now.year(), now.month(), now.day());

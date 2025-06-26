@@ -5,7 +5,7 @@ mod weather;
 // mod news;
 mod radar;
 mod renderer;
-mod stats;
+mod tides;
 
 mod utils;
 
@@ -13,7 +13,7 @@ use chrono::Timelike;
 use env_logger;
 use futures::FutureExt;
 use log;
-use std::{env, panic::AssertUnwindSafe, time::Duration};
+use std::{env, panic::AssertUnwindSafe};
 
 use log::info;
 
