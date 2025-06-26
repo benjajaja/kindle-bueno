@@ -420,11 +420,8 @@ fn get_screen_dim() -> Option<Screen> {
     }
 }
 
-async fn create_output_svg() -> String {
+fn create_output_svg(data: KindleDisplayData) -> String {
     let mut template = include_str!("template.svg").to_string();
-
-    //let data = build_some_data().await;
-    let data = build_all_data().await;
 
     template = format_stats(template, &data);
     template = format_time(template, &data);
@@ -538,10 +535,12 @@ pub fn save(mut image: DynamicImage) -> String {
     output_path
 }
 
-pub async fn render_png() {
+pub async fn fetch_and_render() {
     let start = Instant::now();
 
-    let template = create_output_svg().await;
+    let data = build_all_data().await;
+
+    let template = create_output_svg(data);
     let image = render_svg(template).await;
     let output_pth = save(image);
     let eips_result = update_screen(output_pth).await;

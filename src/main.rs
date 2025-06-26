@@ -45,10 +45,10 @@ async fn panic_wrapper() -> Result<(), String> {
     */
 
     let may_panic = async {
-        utils::check_internet_with_retries(10, Duration::from_secs(5))
-            .await
-            .unwrap();
-        renderer::render_png().await
+        // utils::check_internet_with_retries(10, Duration::from_secs(5))
+        // .await
+        // .unwrap();
+        renderer::fetch_and_render().await
     };
 
     let panic_result = AssertUnwindSafe(may_panic).catch_unwind().await;
