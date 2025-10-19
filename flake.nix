@@ -29,25 +29,19 @@
             lockFile = ./Cargo.lock;
           };
 
-          # Use pre-extracted secrets (run 'nix develop' first to extract from sops)
-          preBuild = let
-            sensitivePath = ./sensitive;
-          in ''
+          # Read secrets from env vars (requires --impure)
+          # Run from within 'nix develop' shell
+          preBuild = ''
             mkdir -p sensitive
-            ${pkgs.lib.optionalString (builtins.pathExists sensitivePath) ''
-              cp -r ${sensitivePath}/* sensitive/
-              chmod -R u+w sensitive
-            ''}
-
-            # Verify all required secrets exist
             ${pkgs.lib.concatMapStringsSep "\n" (key: ''
-              if [ ! -f "sensitive/${key}" ]; then
-                echo "ERROR: sensitive/${key} not found!"
-                echo "Run 'nix develop' first to extract secrets from sops"
-                exit 1
-              fi
+              echo "$SECRET_${pkgs.lib.toUpper (pkgs.lib.replaceStrings ["-"] ["_"] key)}" > sensitive/${key}
             '') secretKeys}
           '';
+
+          SECRET_AEMET_KEY = builtins.getEnv "SECRET_AEMET_KEY";
+          SECRET_AEMET_STATION = builtins.getEnv "SECRET_AEMET_STATION";
+          SECRET_OPENWEATHERKEY = builtins.getEnv "SECRET_OPENWEATHERKEY";
+          SECRET_TIDE_STATION_ID = builtins.getEnv "SECRET_TIDE_STATION_ID";
 
           # Static linking flags
           RUSTFLAGS = "-C target-feature=+crt-static";
@@ -92,8 +86,13 @@
             echo "Secrets extracted to sensitive/ directory"
           fi
 
+          # Export secrets as env vars for nix build --impure
+          ${pkgs.lib.concatMapStringsSep "\n" (key: ''
+            export SECRET_${pkgs.lib.toUpper (pkgs.lib.replaceStrings ["-"] ["_"] key)}=$(cat sensitive/${key})
+          '') secretKeys}
+
           echo "Nix cross-compilation environment for Kindle"
-          echo "Build with: nix build"
+          echo "Build with: nix build --impure"
           echo "Result will be in: ./result/bin/kindle-bueno"
         '';
       };
