@@ -1,5 +1,4 @@
 use chrono::prelude::*;
-use once_cell::sync::Lazy;
 use reqwest;
 use serde::Deserialize;
 
@@ -7,11 +6,6 @@ use log::info;
 use std::time::Instant;
 
 use crate::config_file;
-
-#[derive(Deserialize, Debug)]
-struct OpenWeatherMapKey {
-    key: String,
-}
 
 #[derive(Deserialize, Debug)]
 struct WeatherData {
@@ -54,18 +48,12 @@ pub struct DayData {
     pub min_c: f64,
 }
 
-static WEATHER_CONFIG: Lazy<OpenWeatherMapKey> = Lazy::new(|| {
-    let file = include_bytes!(config_file!("../", "/openweatherkey.json"));
-    let config: OpenWeatherMapKey = serde_json::from_slice(file).unwrap();
-    config
-});
-
 // Async function to fetch weather data
 pub async fn fetch_weather() -> Result<Vec<DayData>, Box<dyn std::error::Error>> {
     info!("Fetching weather...");
     let now = Instant::now();
 
-    let key = &WEATHER_CONFIG.key;
+    let key = include_str!(config_file!("../", "/openweatherkey"));
     let url = format!("http://api.openweathermap.org/data/2.5/forecast?lat=28.96302&lon=-13.54769&units=metric&appid={key}");
 
     let response = reqwest::get(&url).await?;

@@ -1,5 +1,4 @@
 use image::{self, ImageBuffer, ImageFormat, Luma};
-use once_cell::sync::Lazy;
 use reqwest;
 use serde::Deserialize;
 
@@ -11,12 +10,6 @@ use chrono::{Datelike, Local, Timelike};
 use log::{error, info};
 
 use crate::config_file;
-
-#[derive(Deserialize, Debug)]
-struct AemetConfig {
-    key: String,
-    station: String,
-}
 
 #[derive(Deserialize, Debug)]
 struct AemetRes {
@@ -132,15 +125,9 @@ pub struct Wind {
     pub direction: f32,
 }
 
-static AEMET_CONFIG: Lazy<AemetConfig> = Lazy::new(|| {
-    let file = include_bytes!(config_file!("../", "/aemet.json"));
-    let config: AemetConfig = serde_json::from_slice(file).unwrap();
-    config
-});
-
 pub async fn fetch_wind() -> Result<Wind, Box<dyn std::error::Error>> {
-    let key = &AEMET_CONFIG.key;
-    let station = &AEMET_CONFIG.station;
+    let key = include_str!(config_file!("../", "/aemet_key"));
+    let station = include_str!(config_file!("../", "/aemet_station"));
 
     info!("Fetching AEMET observation data station {station}");
     let url = format!(
