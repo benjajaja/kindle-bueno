@@ -11,6 +11,7 @@ shell.nix
 
 output.png
 output.svg
+result
 .cargo
 .direnv
 .rustup
