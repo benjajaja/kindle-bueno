@@ -3,7 +3,8 @@ use std::str::FromStr;
 
 use reqwest::header;
 
-use chrono::{Local, NaiveTime, Utc};
+use chrono::{DateTime, NaiveDate, NaiveTime, TimeZone, Utc};
+use chrono_tz::{Atlantic::Canary, Tz};
 
 use crate::config_file;
 
@@ -27,20 +28,22 @@ pub async fn fetch() -> Result<(Tide, Tide), Box<dyn std::error::Error>> {
 
     // https://ideihm.covam.es/api-ihm/getmarea?request=getlist&format=txt
     let station_id = include_str!(config_file!("../../", "/tide_station_id")).trim();
-    let response = client
-        .get(format!(
-            "https://ideihm.covam.es/api-ihm/getmarea?request=gettide&id={station_id}&date={date}"
-        ))
-        .headers(headers)
-        .send()
-        .await?;
+    let url = format!(
+        "https://ideihm.covam.es/api-ihm/getmarea?request=gettide&id={station_id}&date={date}"
+    );
+    let response = client.get(url).headers(headers).send().await?;
 
     let response = response.error_for_status()?;
     let data: String = response.text().await?;
 
     let lines: Vec<&str> = data.lines().collect();
-    let parsed: Vec<TideEntry> = lines.iter().filter_map(|&line| parse_line(line)).collect();
-    get_two_tides(&parsed, Local::now().time())
+    let date = Utc::now().naive_utc().date();
+    let parsed: Vec<TideEntry> = lines
+        .iter()
+        .filter_map(|&line| parse_line(line, date))
+        .collect();
+    let now = Utc::now().with_timezone(&Canary);
+    get_two_tides(&parsed, now)
 }
 
 #[derive(Debug, Clone)]
@@ -51,32 +54,41 @@ pub enum Tide {
 
 #[derive(Debug, Clone)]
 struct TideEntry {
-    time: NaiveTime,
+    time: DateTime<Tz>,
     tide: Tide,
 }
 
-fn parse_line(line: &str) -> Option<TideEntry> {
+fn parse_line(line: &str, date: NaiveDate) -> Option<TideEntry> {
     let parts: Vec<&str> = line.split('\t').collect();
     if parts.len() < 3 {
         return None;
     }
 
     let time_str = parts[0].to_string();
-    let time = NaiveTime::from_str(&time_str).ok()?;
+    let naive_time = NaiveTime::from_str(&time_str).ok()?;
+
+    // API returns times in UTC, convert to Canary timezone
+    let naive_datetime = date.and_time(naive_time);
+    let utc_time = Utc.from_utc_datetime(&naive_datetime);
+    let canary_time = utc_time.with_timezone(&Canary);
+
     let tide_type = parts[2].trim();
 
     let tide = match tide_type {
-        "bajamar" => Tide::Low(time_str.clone()),
-        "pleamar" => Tide::High(time_str.clone()),
+        "bajamar" => Tide::Low(canary_time.format("%H:%M").to_string()),
+        "pleamar" => Tide::High(canary_time.format("%H:%M").to_string()),
         _ => return None,
     };
 
-    Some(TideEntry { time, tide })
+    Some(TideEntry {
+        time: canary_time,
+        tide,
+    })
 }
 
 fn get_two_tides(
     tides: &[TideEntry],
-    ref_time: NaiveTime,
+    ref_time: DateTime<Tz>,
 ) -> Result<(Tide, Tide), Box<dyn std::error::Error>> {
     if tides.len() < 2 {
         return Err("Not enough tides overall".into());
