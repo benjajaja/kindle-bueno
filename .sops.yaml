@@ -1,0 +1,7 @@
+keys:
+  - &gipsy age1zqj90kxx0v8fh3q9mjxmnlrddkx040wqehw9xjdtd0k2pas425lsvv6xyx
+creation_rules:
+  - path_regex: secrets\.yaml
+    key_groups:
+    - age:
+      - *gipsy
