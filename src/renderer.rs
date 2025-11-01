@@ -301,6 +301,13 @@ fn format_radar(template: String, data: &KindleDisplayData) -> String {
         template = template.replace("#wind", "?");
     }
 
+    let logo = include_bytes!("logo/aemet.svg");
+    let encoded_logo = BASE64_STANDARD.encode(logo);
+    template = template.replace(
+        "logo/aemet.svg",
+        &format!("data:image/svg+xml;base64,{encoded_logo}"),
+    );
+
     return template;
 }
 
