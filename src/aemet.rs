@@ -132,7 +132,7 @@ pub async fn fetch_aemet_res<T: DeserializeOwned>(
     url: String,
 ) -> Result<T, Box<dyn std::error::Error>> {
     let url = format!("{url}?api_key={AEMET_KEY}");
-    info!("Fetching AEMET {url}");
+    info!("Fetching AEMET data link");
 
     let client = reqwest::Client::new();
 
@@ -146,7 +146,7 @@ pub async fn fetch_aemet_res<T: DeserializeOwned>(
 
     let url = ares.data;
 
-    info!("Following AEMET data URL {url}");
+    info!("Following AEMET data link url");
     let response = client.get(url).send().await.inspect_err(|err| {
         error!("Aemet request error: {err:?}");
     })?;
