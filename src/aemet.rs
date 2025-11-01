@@ -9,7 +9,7 @@ use reqwest::header::USER_AGENT;
 use chrono::{Datelike, Local, NaiveDate, Timelike};
 use log::{error, info};
 
-use crate::config_file;
+use crate::include_sensitive;
 
 #[derive(Deserialize, Debug)]
 // This just gives us a unique link to the data we actually want.
@@ -126,12 +126,12 @@ pub struct WindObservation {
     pub direction: f32,
 }
 
+const AEMET_KEY: &str = include_sensitive!("/aemet_key");
+
 pub async fn fetch_aemet_res<T: DeserializeOwned>(
     url: String,
 ) -> Result<T, Box<dyn std::error::Error>> {
-    let key = include_str!(config_file!("../", "/aemet_key"));
-
-    let url = format!("{url}?api_key={key}");
+    let url = format!("{url}?api_key={AEMET_KEY}");
     info!("Fetching AEMET {url}");
 
     let client = reqwest::Client::new();
@@ -160,11 +160,12 @@ pub async fn fetch_aemet_res<T: DeserializeOwned>(
     return Ok(data);
 }
 
+const WIND_STATION: &str = include_sensitive!("/aemet_station");
+
 pub async fn fetch_wind_observation() -> Result<WindObservation, Box<dyn std::error::Error>> {
-    let station = include_str!(config_file!("../", "/aemet_station"));
-    info!("Fetching AEMET observation data station {station}");
+    info!("Fetching AEMET observation data station {WIND_STATION}");
     let data: Vec<AemetObservationRes> = fetch_aemet_res(format!(
-        "https://opendata.aemet.es/opendata/api/observacion/convencional/datos/estacion/{station}"
+        "https://opendata.aemet.es/opendata/api/observacion/convencional/datos/estacion/{WIND_STATION}"
     ))
     .await?;
 
@@ -279,15 +280,13 @@ where
     }
 }
 
+const BEACH: &str = include_sensitive!("/aemet_prediction_beach");
+
 pub async fn fetch_beach_prediction() -> Result<Vec<AemetPredictionDay>, Box<dyn std::error::Error>>
 {
-    let beach = include_str!(config_file!("../", "/aemet_prediction_beach"));
-    if beach.contains("\n") {
-        panic!("newline!");
-    }
-    info!("Fetching AEMET observation prediccion beach {beach}");
+    info!("Fetching AEMET observation prediccion beach {BEACH}");
     let data: Vec<AemetPredictionRes> = fetch_aemet_res(format!(
-        "https://opendata.aemet.es/opendata/api/prediccion/especifica/playa/{beach}"
+        "https://opendata.aemet.es/opendata/api/prediccion/especifica/playa/{BEACH}"
     ))
     .await?;
 

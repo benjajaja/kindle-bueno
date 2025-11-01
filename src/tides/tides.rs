@@ -6,12 +6,14 @@ use reqwest::header;
 use chrono::{DateTime, NaiveDate, NaiveTime, TimeZone, Utc};
 use chrono_tz::{Atlantic::Canary, Tz};
 
-use crate::config_file;
+use crate::include_sensitive;
 
 fn get_date() -> String {
     let today = Utc::now().naive_utc();
     today.format("%Y%m%d").to_string()
 }
+
+const STATION_ID: &str = include_sensitive!("/tide_station_id");
 
 pub async fn fetch() -> Result<(Tide, Tide), Box<dyn std::error::Error>> {
     let mut headers = header::HeaderMap::new();
@@ -27,9 +29,8 @@ pub async fn fetch() -> Result<(Tide, Tide), Box<dyn std::error::Error>> {
     let date = get_date();
 
     // https://ideihm.covam.es/api-ihm/getmarea?request=getlist&format=txt
-    let station_id = include_str!(config_file!("../../", "/tide_station_id")).trim();
     let url = format!(
-        "https://ideihm.covam.es/api-ihm/getmarea?request=gettide&id={station_id}&date={date}"
+        "https://ideihm.covam.es/api-ihm/getmarea?request=gettide&id={STATION_ID}&date={date}"
     );
     let response = client.get(url).headers(headers).send().await?;
 

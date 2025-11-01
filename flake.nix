@@ -15,7 +15,7 @@
       pkgsCross = pkgs.pkgsCross.armv7l-hf-multiplatform.pkgsStatic;
 
       sopsConfig = import ./sops.nix;
-      secretKeys = [ "aemet_key" "aemet_station" "openweatherkey" "tide_station_id" "aemet_prediction_beach" ];
+      secretKeys = [ "aemet_key" "aemet_station" "tide_station_id" "aemet_prediction_beach" ];
     in
     {
       packages.${system} = {
@@ -34,14 +34,13 @@
           preBuild = ''
             mkdir -p sensitive
             ${pkgs.lib.concatMapStringsSep "\n" (key: ''
-              echo "$SECRET_${pkgs.lib.toUpper (pkgs.lib.replaceStrings ["-"] ["_"] key)}" > sensitive/${key}
+              echo -n "$SECRET_${pkgs.lib.toUpper (pkgs.lib.replaceStrings ["-"] ["_"] key)}" > sensitive/${key}
             '') secretKeys}
           '';
 
           SECRET_AEMET_KEY = builtins.getEnv "SECRET_AEMET_KEY";
           SECRET_AEMET_STATION = builtins.getEnv "SECRET_AEMET_STATION";
           SECRET_AEMET_PREDICTION_BEACH = builtins.getEnv "SECRET_AEMET_PREDICTION_BEACH";
-          SECRET_OPENWEATHERKEY = builtins.getEnv "SECRET_OPENWEATHERKEY";
           SECRET_TIDE_STATION_ID = builtins.getEnv "SECRET_TIDE_STATION_ID";
 
           # Static linking flags

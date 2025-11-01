@@ -1,7 +1,7 @@
 // RUSTFLAGS="-C target-feature=+crt-static" cross build --target arm-unknown-linux-musleabi --release
 
 // mod calendar;
-mod weather;
+// mod weather;
 // mod news;
 mod aemet;
 mod renderer;
@@ -18,10 +18,22 @@ use std::{env, panic::AssertUnwindSafe};
 use log::info;
 
 #[macro_export]
-macro_rules! config_file {
-    ($prefix:expr, $file:expr) => {
-        concat!($prefix, env!("CONFIG_DIR"), $file)
+macro_rules! include_sensitive {
+    ($file:expr) => {
+        $crate::assert_no_newlines(include_str!(concat!(env!("CONFIG_DIR"), "/", $file)))
     };
+}
+
+pub const fn assert_no_newlines(s: &str) -> &str {
+    let bytes = s.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'\n' {
+            panic!("contains newlines!");
+        }
+        i += 1;
+    }
+    s
 }
 
 const SLEEP_MINUTES: u32 = 60;

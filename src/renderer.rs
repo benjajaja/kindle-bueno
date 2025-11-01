@@ -2,9 +2,6 @@ use crate::aemet::WindObservation;
 use crate::aemet::{self, AemetPredictionDay};
 use crate::tides;
 use crate::tides::tides::Tide;
-use crate::weather;
-
-use crate::weather::DayData;
 
 use image::{DynamicImage, ImageBuffer, Rgba};
 use once_cell::sync::Lazy;
@@ -30,7 +27,6 @@ use std::time::Duration as stdDuration;
 #[derive(Debug)]
 struct KindleDisplayData {
     short_stats: Option<tides::Stats>,
-    weather: Option<Vec<weather::DayData>>,
     image: Option<DynamicImage>,
     wind: Option<WindObservation>,
     beach: Option<Vec<AemetPredictionDay>>,
@@ -43,9 +39,8 @@ async fn build_all_data() -> KindleDisplayData {
     let timeout = stdDuration::from_secs(30);
     let retries = 15;
 
-    let (short_stats, weather, image, wind, beach) = join!(
+    let (short_stats, image, wind, beach) = join!(
         retry_with_timeout("Short stats", retries, timeout, || tides::fetch_tides()),
-        retry_with_timeout("Weather", retries, timeout, || weather::fetch_weather()),
         retry_with_timeout("Radar", retries, timeout, || aemet::fetch_radar()),
         retry_with_timeout("Wind", retries, timeout, || aemet::fetch_wind_observation()),
         retry_with_timeout("Beach", retries, timeout, || aemet::fetch_beach_prediction(
@@ -57,7 +52,6 @@ async fn build_all_data() -> KindleDisplayData {
 
     KindleDisplayData {
         short_stats: short_stats.ok(),
-        weather: weather.ok(),
         image: image.ok(),
         wind: wind.ok(),
         beach: beach.ok(),
@@ -207,51 +201,6 @@ fn format_time(template: String, _data: &KindleDisplayData) -> String {
     template = template.replace("#time", &format!("{:0>2}:{:0>2}", hour, minute));
     // template = template.replace("#2", &format!("{:0>2}", minute));
     return template;
-}
-
-static WEATHER_SVGS: Lazy<[&'static str; 8]> = Lazy::new(|| {
-    [
-        include_str!("icons/1.svg"),
-        include_str!("icons/2.svg"),
-        include_str!("icons/3.svg"),
-        include_str!("icons/4.svg"),
-        include_str!("icons/5.svg"),
-        include_str!("icons/6.svg"),
-        include_str!("icons/7.svg"),
-        include_str!("icons/8.svg"),
-    ]
-});
-
-fn weather_to_icon(day: &DayData) -> &'static str {
-    let avg_rain = day.rain_sum / day.data_points as f64;
-    let avg_cloud = day.cloud_sum / day.data_points as f64;
-
-    let mut result = WEATHER_SVGS[0];
-
-    if avg_cloud > 20.0 {
-        result = WEATHER_SVGS[1];
-    }
-    if avg_cloud > 50.0 {
-        result = WEATHER_SVGS[2];
-    }
-    if avg_cloud > 80.0 {
-        result = WEATHER_SVGS[3];
-    }
-
-    if avg_rain > 0.1 {
-        result = WEATHER_SVGS[4];
-    }
-    if avg_rain > 0.5 {
-        result = WEATHER_SVGS[5];
-    }
-    if avg_rain > 1.0 {
-        result = WEATHER_SVGS[6];
-    }
-    if avg_rain > 5.0 {
-        result = WEATHER_SVGS[7];
-    }
-
-    result
 }
 
 static MOON_SVGS: Lazy<[&'static str; 8]> = Lazy::new(|| {

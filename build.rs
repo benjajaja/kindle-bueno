@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, path::PathBuf};
 
 fn main() {
     println!("cargo:rerun-if-env-changed=PLAYA_BLANCA");
@@ -9,5 +9,8 @@ fn main() {
         "sensitive"
     };
 
-    println!("cargo:rustc-env=CONFIG_DIR={}", config_dir);
+    let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
+    let absolute_path = PathBuf::from(manifest_dir).join(config_dir);
+
+    println!("cargo:rustc-env=CONFIG_DIR={}", absolute_path.display());
 }
