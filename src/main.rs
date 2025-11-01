@@ -3,7 +3,7 @@
 // mod calendar;
 mod weather;
 // mod news;
-mod radar;
+mod aemet;
 mod renderer;
 mod tides;
 

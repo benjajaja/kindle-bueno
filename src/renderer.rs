@@ -1,5 +1,5 @@
-use crate::radar;
-use crate::radar::Wind;
+use crate::aemet::WindObservation;
+use crate::aemet::{self, AemetPredictionDay};
 use crate::tides;
 use crate::tides::tides::Tide;
 use crate::weather;
@@ -32,7 +32,8 @@ struct KindleDisplayData {
     short_stats: Option<tides::Stats>,
     weather: Option<Vec<weather::DayData>>,
     image: Option<DynamicImage>,
-    wind: Option<Wind>,
+    wind: Option<WindObservation>,
+    beach: Option<Vec<AemetPredictionDay>>,
 }
 
 async fn build_all_data() -> KindleDisplayData {
@@ -42,11 +43,13 @@ async fn build_all_data() -> KindleDisplayData {
     let timeout = stdDuration::from_secs(30);
     let retries = 15;
 
-    let (short_stats, weather, image, wind) = join!(
+    let (short_stats, weather, image, wind, beach) = join!(
         retry_with_timeout("Short stats", retries, timeout, || tides::fetch_tides()),
         retry_with_timeout("Weather", retries, timeout, || weather::fetch_weather()),
-        retry_with_timeout("Radar", retries, timeout, || radar::fetch_radar()),
-        retry_with_timeout("Wind", retries, timeout, || radar::fetch_wind()),
+        retry_with_timeout("Radar", retries, timeout, || aemet::fetch_radar()),
+        retry_with_timeout("Wind", retries, timeout, || aemet::fetch_wind_observation()),
+        retry_with_timeout("Beach", retries, timeout, || aemet::fetch_beach_prediction(
+        )),
     );
 
     let elapsed = format!("{:.2?}", now.elapsed());
@@ -57,6 +60,7 @@ async fn build_all_data() -> KindleDisplayData {
         weather: weather.ok(),
         image: image.ok(),
         wind: wind.ok(),
+        beach: beach.ok(),
     }
 }
 
@@ -278,17 +282,29 @@ fn moon_to_icon(age: f64) -> &'static str {
 fn format_weather(template: String, data: &KindleDisplayData) -> String {
     let mut template = template.clone();
 
-    match &data.weather {
-        Some(weather) => {
-            // Trust me, I'm not happy with this code either
-
-            template = match weather.get(0) {
+    if let Some(beach) = &data.beach {
+        for i in 0..3 {
+            template = match beach.get(i) {
                 Some(day) => {
-                    template = template.replace("#D1", &format!("{:0>2} {}", day.date, day.day));
-                    template = template.replace("#T1", &format!("{:.1}", day.max_c));
-                    template = template.replace("#T2", &format!("{:.1}", day.min_c));
-                    template = replace_image(template, "icons/1.svg", &&weather_to_icon(day));
-
+                    let day_marker = i + 1;
+                    template =
+                        template.replace(&format!("#D{}-Day", day_marker), day.get_week_day());
+                    template = template.replace(
+                        &format!("#D{}-Wi-1", day_marker),
+                        &format!("{}", day.wind.morning.to_str()),
+                    );
+                    template = template.replace(
+                        &format!("#D{}-Wi-2", day_marker),
+                        &format!("{}", day.wind.afternoon.to_str()),
+                    );
+                    template = template.replace(
+                        &format!("#D{}-Wa-1", day_marker),
+                        &format!("{}", day.waves.morning.to_str()),
+                    );
+                    template = template.replace(
+                        &format!("#D{}-Wa-2", day_marker),
+                        &format!("{}", day.waves.afternoon.to_str()),
+                    );
                     template
                 }
                 None => {
@@ -297,52 +313,9 @@ fn format_weather(template: String, data: &KindleDisplayData) -> String {
                     template = template.replace("#T2", "NA");
                     template
                 }
-            };
-
-            template = match weather.get(1) {
-                Some(day) => {
-                    template = template.replace("#D2", &format!("{:0>2} {}", day.date, day.day));
-                    template = template.replace("#T3", &format!("{:.1}", day.max_c));
-                    template = template.replace("#T4", &format!("{:.1}", day.min_c));
-                    template = replace_image(template, "icons/2.svg", &&weather_to_icon(day));
-                    template
-                }
-                None => {
-                    template = template.replace("#D2", "NA");
-                    template = template.replace("#T3", "NA");
-                    template = template.replace("#T4", "NA");
-                    template
-                }
-            };
-
-            template = match weather.get(2) {
-                Some(day) => {
-                    template = template.replace("#D3", &format!("{:0>2} {}", day.date, day.day));
-                    template = template.replace("#T5", &format!("{:.1}", day.max_c));
-                    template = template.replace("#T6", &format!("{:.1}", day.min_c));
-                    template = replace_image(template, "icons/3.svg", &&weather_to_icon(day));
-                    template
-                }
-                None => {
-                    template = template.replace("#D3", "NA");
-                    template = template.replace("#T5", "NA");
-                    template = template.replace("#T6", "NA");
-                    template
-                }
-            };
+            }
         }
-        None => {
-            template = template.replace("#D1", "ERR");
-            template = template.replace("#D2", "ERR");
-            template = template.replace("#D3", "ERR");
-            template = template.replace("#T1", "ERR");
-            template = template.replace("#T2", "ERR");
-            template = template.replace("#T3", "ERR");
-            template = template.replace("#T4", "ERR");
-            template = template.replace("#T5", "ERR");
-            template = template.replace("#T6", "ERR");
-        }
-    };
+    }
 
     return template;
 }
