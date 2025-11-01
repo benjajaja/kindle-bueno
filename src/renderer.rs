@@ -269,6 +269,8 @@ fn format_weather(template: String, data: &KindleDisplayData) -> String {
     return template;
 }
 
+include!(env!("OUT_LOGO"));
+
 fn format_radar(template: String, data: &KindleDisplayData) -> String {
     let mut template = template.clone();
     match &data.image {
@@ -301,11 +303,12 @@ fn format_radar(template: String, data: &KindleDisplayData) -> String {
         template = template.replace("#wind", "?");
     }
 
-    let logo = include_bytes!("logo/aemet.svg");
-    let encoded_logo = BASE64_STANDARD.encode(logo);
+    let encoded_logo = BASE64_STANDARD.encode(LOGO);
+    info!("encoded bytes: {}", encoded_logo.len());
+    // info!("base64: {}", &encoded_logo[..50]);
     template = template.replace(
-        "logo/aemet.svg",
-        &format!("data:image/svg+xml;base64,{encoded_logo}"),
+        "logo/aemet.png",
+        &format!("data:image/png;base64,{encoded_logo}"),
     );
 
     return template;

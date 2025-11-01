@@ -15,7 +15,7 @@
       pkgsCross = pkgs.pkgsCross.armv7l-hf-multiplatform.pkgsStatic;
 
       sopsConfig = import ./sops.nix;
-      secretKeys = [ "aemet_key" "aemet_station" "tide_station_id" "aemet_prediction_beach" ];
+      secretKeys = [ "aemet_key" "aemet_station" "tide_station_id" "aemet_prediction_beach" "logo" ];
     in
     {
       packages.${system} = {
@@ -42,6 +42,7 @@
           SECRET_AEMET_STATION = builtins.getEnv "SECRET_AEMET_STATION";
           SECRET_AEMET_PREDICTION_BEACH = builtins.getEnv "SECRET_AEMET_PREDICTION_BEACH";
           SECRET_TIDE_STATION_ID = builtins.getEnv "SECRET_TIDE_STATION_ID";
+          SECRET_LOGO = builtins.getEnv "SECRET_LOGO";
 
           # Static linking flags
           RUSTFLAGS = "-C target-feature=+crt-static";
@@ -71,25 +72,22 @@
         buildInputs = [
           sops-nix.nixosModules.sops
           pkgs.sops
+          (pkgs.writeShellScriptBin "extract-secrets" ''
+            ${pkgs.lib.concatMapStringsSep "\n" (key: ''
+              ${pkgs.sops}/bin/sops -d --extract '["${key}"]' "$1" > sensitive/${key}
+            '') secretKeys}
+            # Export secrets as env vars for nix build --impure
+            ${pkgs.lib.concatMapStringsSep "\n" (key: ''
+              echo export SECRET_${pkgs.lib.toUpper (pkgs.lib.replaceStrings ["-"] ["_"] key)}=$(cat sensitive/${key})
+            '') secretKeys}
+          '')
+
         ];
 
         shellHook = ''
           export NOT_KINDLE=1
 
-          # Extract secrets from sops secrets.yaml
-          if [ ! -d "sensitive" ] || [ "secrets.yaml" -nt "sensitive/aemet_key" ]; then
-            echo "Extracting secrets from secrets.yaml..."
-            mkdir -p sensitive
-            ${pkgs.lib.concatMapStringsSep "\n" (key: ''
-              ${pkgs.sops}/bin/sops -d --extract '["${key}"]' secrets.yaml > sensitive/${key}
-            '') secretKeys}
-            echo "Secrets extracted to sensitive/ directory"
-          fi
-
-          # Export secrets as env vars for nix build --impure
-          ${pkgs.lib.concatMapStringsSep "\n" (key: ''
-            export SECRET_${pkgs.lib.toUpper (pkgs.lib.replaceStrings ["-"] ["_"] key)}=$(cat sensitive/${key})
-          '') secretKeys}
+          eval "$(extract-secrets 'secrets.yaml')"
 
           echo "Nix cross-compilation environment for Kindle"
           echo "Build with: nix build --impure"
