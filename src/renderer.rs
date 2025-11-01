@@ -295,8 +295,8 @@ fn format_radar(template: String, data: &KindleDisplayData) -> String {
     if let Some(wind) = &data.wind {
         template = template.replace("#wind", &format!("{:.1?}", wind.speed));
         template = template.replace(
-            "rotate(45 1115 84)",
-            &format!("rotate({:.0} 1100 60)", wind.direction + 180.0),
+            "rotate(0 528 70)",
+            &format!("rotate({:.0} 528 70)", wind.direction + 180.0),
         );
         info!("Wind direction: {} deg", wind.direction);
     } else {
@@ -304,8 +304,6 @@ fn format_radar(template: String, data: &KindleDisplayData) -> String {
     }
 
     let encoded_logo = BASE64_STANDARD.encode(LOGO);
-    info!("encoded bytes: {}", encoded_logo.len());
-    // info!("base64: {}", &encoded_logo[..50]);
     template = template.replace(
         "logo/aemet.png",
         &format!("data:image/png;base64,{encoded_logo}"),
