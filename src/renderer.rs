@@ -26,7 +26,7 @@ use std::time::Duration as stdDuration;
 
 #[derive(Debug)]
 struct KindleDisplayData {
-    short_stats: Option<tides::Stats>,
+    tides: Option<tides::Stats>,
     image: Option<DynamicImage>,
     wind: Option<WindObservation>,
     beach: Option<Vec<AemetPredictionDay>>,
@@ -39,8 +39,8 @@ async fn build_all_data() -> KindleDisplayData {
     let timeout = stdDuration::from_secs(30);
     let retries = 15;
 
-    let (short_stats, image, wind, beach) = join!(
-        retry_with_timeout("Short stats", retries, timeout, || tides::fetch_tides()),
+    let (tides, image, wind, beach) = join!(
+        retry_with_timeout("Tides", retries, timeout, || tides::fetch_tides()),
         retry_with_timeout("Radar", retries, timeout, || aemet::fetch_radar()),
         retry_with_timeout("Wind", retries, timeout, || aemet::fetch_wind_observation()),
         retry_with_timeout("Beach", retries, timeout, || aemet::fetch_beach_prediction(
@@ -51,7 +51,7 @@ async fn build_all_data() -> KindleDisplayData {
     info!("Fetched all kindle data in {elapsed}");
 
     KindleDisplayData {
-        short_stats: short_stats.ok(),
+        tides: tides.ok(),
         image: image.ok(),
         wind: wind.ok(),
         beach: beach.ok(),
@@ -104,11 +104,11 @@ where
 
 fn format_stats(template: String, data: &KindleDisplayData) -> String {
     let mut template = template.clone();
-    match &data.short_stats {
-        Some(short_stats) => {
+    match &data.tides {
+        Some(tides) => {
             template = template.replace(
                 "#I1a",
-                &match &short_stats.tides {
+                &match &tides.tides {
                     Some((first, _)) => match first {
                         Tide::High(_) => format!("Pleamar"),
                         Tide::Low(_) => format!("Bajamar"),
@@ -118,7 +118,7 @@ fn format_stats(template: String, data: &KindleDisplayData) -> String {
             );
             template = template.replace(
                 "#I1b",
-                &match &short_stats.tides {
+                &match &tides.tides {
                     Some((first, _)) => match first {
                         Tide::High(time) => format!("{time}"),
                         Tide::Low(time) => format!("{time}"),
@@ -129,7 +129,7 @@ fn format_stats(template: String, data: &KindleDisplayData) -> String {
 
             template = template.replace(
                 "#I2a",
-                &match &short_stats.tides {
+                &match &tides.tides {
                     Some((_, second)) => match second {
                         Tide::High(_) => format!("Pleamar"),
                         Tide::Low(_) => format!("Bajamar"),
@@ -139,7 +139,7 @@ fn format_stats(template: String, data: &KindleDisplayData) -> String {
             );
             template = template.replace(
                 "#I2b",
-                &match &short_stats.tides {
+                &match &tides.tides {
                     Some((_, second)) => match second {
                         Tide::High(time) => format!("{time}"),
                         Tide::Low(time) => format!("{time}"),
@@ -148,31 +148,7 @@ fn format_stats(template: String, data: &KindleDisplayData) -> String {
                 },
             );
 
-            template = replace_image(template, "moon/1.svg", &moon_to_icon(short_stats.moon_age));
-
-            // template = template.replace(
-            // "#I4",
-            // &match short_stats.linux_share {
-            // Some(v) => format!("{:.2}%", v),
-            // None => "NA".to_string(),
-            // },
-            // );
-            //
-            // template = template.replace(
-            // "#I5",
-            // &match short_stats.btc_halving {
-            // Some(v) => time_remaining(v),
-            // None => "NA".to_string(),
-            // },
-            // );
-            //
-            // template = template.replace(
-            // "#I6",
-            // &match short_stats.kernel_version.clone() {
-            // Some(v) => v,
-            // None => "NA".to_string(),
-            // },
-            // );
+            template = replace_image(template, "moon/1.svg", &moon_to_icon(tides.moon_age));
         }
         None => {
             template = template.replace("#I1", "ERR");
