@@ -120,3 +120,41 @@ fn get_two_tides(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_two_tides() {
+        let tides = vec![
+            TideEntry {
+                time: "2025-01-15T02:00:00+00:00".parse::<DateTime<Utc>>().unwrap().with_timezone(&Canary),
+                tide: Tide::Low("02:00".to_string()),
+            },
+            TideEntry {
+                time: "2025-01-15T08:00:00+00:00".parse::<DateTime<Utc>>().unwrap().with_timezone(&Canary),
+                tide: Tide::High("08:00".to_string()),
+            },
+            TideEntry {
+                time: "2025-01-15T14:00:00+00:00".parse::<DateTime<Utc>>().unwrap().with_timezone(&Canary),
+                tide: Tide::Low("14:00".to_string()),
+            },
+        ];
+
+        let ref_time = "2025-01-15T10:00:00+00:00".parse::<DateTime<Utc>>().unwrap().with_timezone(&Canary);
+        let result = get_two_tides(&tides, ref_time);
+
+        assert!(result.is_ok());
+        let (first, second) = result.unwrap();
+
+        match first {
+            Tide::High(time) => assert_eq!(time, "08:00"),
+            _ => panic!("Expected High tide"),
+        }
+        match second {
+            Tide::Low(time) => assert_eq!(time, "14:00"),
+            _ => panic!("Expected Low tide"),
+        }
+    }
+}
